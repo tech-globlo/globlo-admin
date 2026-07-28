@@ -30,7 +30,16 @@ import {
   CTableRow,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPencil, cilCheck, cilX, cilArrowLeft, cilStar, cilTrash, cilCloudUpload, cilLink } from '@coreui/icons'
+import {
+  cilPencil,
+  cilCheck,
+  cilX,
+  cilArrowLeft,
+  cilStar,
+  cilTrash,
+  cilCloudUpload,
+  cilLink,
+} from '@coreui/icons'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 
@@ -89,10 +98,7 @@ const InfoRow = ({ label, value }) => (
 const ChipsRow = ({ label, values }) => (
   <CListGroupItem className="d-flex justify-content-between align-items-start py-2 px-0 border-start-0 border-end-0">
     <span className="text-muted small">{label}</span>
-    <div
-      className="d-flex flex-wrap gap-1 justify-content-end"
-      style={{ maxWidth: '65%' }}
-    >
+    <div className="d-flex flex-wrap gap-1 justify-content-end" style={{ maxWidth: '65%' }}>
       {values && values.length > 0 ? (
         values.map((v) => (
           <CBadge key={v} color="light" textColor="dark" className="border fw-normal">
@@ -190,8 +196,12 @@ const DestinationDetail = () => {
       },
       nature: {
         photographyLevel: parsePhotographyFriendly(dest.photographyFriendly).level,
-        photographyCompositions: parsePhotographyFriendly(dest.photographyFriendly).compositions.join(', '),
-        photographyRecommendedGear: parsePhotographyFriendly(dest.photographyFriendly).recommendedGear.join(', '),
+        photographyCompositions: parsePhotographyFriendly(
+          dest.photographyFriendly,
+        ).compositions.join(', '),
+        photographyRecommendedGear: parsePhotographyFriendly(
+          dest.photographyFriendly,
+        ).recommendedGear.join(', '),
         photographyTip: parsePhotographyFriendly(dest.photographyFriendly).tip,
         photographyPermits: dest.photographyPermits || '',
         category: (dest.category || []).join(', '),
@@ -246,8 +256,12 @@ const DestinationDetail = () => {
       },
       nature: {
         photographyLevel: parsePhotographyFriendly(dest.photographyFriendly).level,
-        photographyCompositions: parsePhotographyFriendly(dest.photographyFriendly).compositions.join(', '),
-        photographyRecommendedGear: parsePhotographyFriendly(dest.photographyFriendly).recommendedGear.join(', '),
+        photographyCompositions: parsePhotographyFriendly(
+          dest.photographyFriendly,
+        ).compositions.join(', '),
+        photographyRecommendedGear: parsePhotographyFriendly(
+          dest.photographyFriendly,
+        ).recommendedGear.join(', '),
         photographyTip: parsePhotographyFriendly(dest.photographyFriendly).tip,
         photographyPermits: dest.photographyPermits || '',
         category: (dest.category || []).join(', '),
@@ -363,8 +377,14 @@ const DestinationDetail = () => {
       const dims = await new Promise((resolve) => {
         const img = new Image()
         const objUrl = URL.createObjectURL(galleryFile)
-        img.onload = () => { URL.revokeObjectURL(objUrl); resolve({ width: img.naturalWidth, height: img.naturalHeight }) }
-        img.onerror = () => { URL.revokeObjectURL(objUrl); resolve({}) }
+        img.onload = () => {
+          URL.revokeObjectURL(objUrl)
+          resolve({ width: img.naturalWidth, height: img.naturalHeight })
+        }
+        img.onerror = () => {
+          URL.revokeObjectURL(objUrl)
+          resolve({})
+        }
         img.src = objUrl
       })
 
@@ -439,8 +459,13 @@ const DestinationDetail = () => {
     <>
       <CCard className="mb-4">
         <CCardBody>
-          <CButton color="link" className="p-0 mb-3 text-muted small d-block" onClick={() => navigate(-1)}>
-            <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
+          <CButton
+            color="link"
+            className="p-0 mb-3 text-muted small d-block"
+            onClick={() => navigate(-1)}
+          >
+            <CIcon icon={cilArrowLeft} className="me-1" size="sm" />
+            Back
           </CButton>
           <div className="d-flex align-items-start gap-3 flex-wrap">
             {/* Cover thumbnail */}
@@ -499,7 +524,6 @@ const DestinationDetail = () => {
                 ))}
               </div>
             </div>
-
           </div>
 
           {/* Stats strip */}
@@ -610,6 +634,7 @@ const DestinationDetail = () => {
                       </div>
                       <CListGroup flush>
                         <InfoRow label="Min Trip Price" value={fmtPrice(dest.minTripPriceMinor)} />
+                        <InfoRow label="Avg Trip Price" value={fmtPrice(dest.avgTripPriceMinor)} />
                         <InfoRow label="Trips" value={dest.tripsCount ?? 0} />
                         <InfoRow label="Service Providers" value={dest.providersCount ?? 0} />
                         <InfoRow label="Wishlisted" value={dest.wishlistCount ?? 0} />
@@ -785,7 +810,9 @@ const DestinationDetail = () => {
                           <CFormInput
                             size="sm"
                             value={f('nature').photographyPermits}
-                            onChange={(e) => setField('nature', 'photographyPermits', e.target.value)}
+                            onChange={(e) =>
+                              setField('nature', 'photographyPermits', e.target.value)
+                            }
                             placeholder="e.g. No drone, permit required."
                           />
                         </EditRow>
@@ -795,7 +822,9 @@ const DestinationDetail = () => {
                           <CFormInput
                             size="sm"
                             value={f('nature').photographyCompositions}
-                            onChange={(e) => setField('nature', 'photographyCompositions', e.target.value)}
+                            onChange={(e) =>
+                              setField('nature', 'photographyCompositions', e.target.value)
+                            }
                             placeholder="Lake-and-forest landscapes, Rare-species birding."
                           />
                         </EditRow>
@@ -805,7 +834,9 @@ const DestinationDetail = () => {
                           <CFormInput
                             size="sm"
                             value={f('nature').photographyRecommendedGear}
-                            onChange={(e) => setField('nature', 'photographyRecommendedGear', e.target.value)}
+                            onChange={(e) =>
+                              setField('nature', 'photographyRecommendedGear', e.target.value)
+                            }
                             placeholder="400mm+ telephoto lens, Wide-angle for lakescapes."
                           />
                         </EditRow>
@@ -976,7 +1007,10 @@ const DestinationDetail = () => {
                   <CButton
                     size="sm"
                     color={galleryAddMode === 'upload' ? 'primary' : 'outline-primary'}
-                    onClick={() => { setGalleryAddMode(galleryAddMode === 'upload' ? null : 'upload'); setGalleryError(null) }}
+                    onClick={() => {
+                      setGalleryAddMode(galleryAddMode === 'upload' ? null : 'upload')
+                      setGalleryError(null)
+                    }}
                   >
                     <CIcon icon={cilCloudUpload} size="sm" className="me-1" />
                     Upload
@@ -984,7 +1018,10 @@ const DestinationDetail = () => {
                   <CButton
                     size="sm"
                     color={galleryAddMode === 'url' ? 'primary' : 'outline-secondary'}
-                    onClick={() => { setGalleryAddMode(galleryAddMode === 'url' ? null : 'url'); setGalleryError(null) }}
+                    onClick={() => {
+                      setGalleryAddMode(galleryAddMode === 'url' ? null : 'url')
+                      setGalleryError(null)
+                    }}
                   >
                     <CIcon icon={cilLink} size="sm" className="me-1" />
                     Import URL
@@ -992,7 +1029,11 @@ const DestinationDetail = () => {
                 </div>
               </div>
 
-              {galleryError && <CAlert color="danger" className="py-2 small">{galleryError}</CAlert>}
+              {galleryError && (
+                <CAlert color="danger" className="py-2 small">
+                  {galleryError}
+                </CAlert>
+              )}
 
               {/* Upload panel */}
               {galleryAddMode === 'upload' && (
@@ -1005,11 +1046,25 @@ const DestinationDetail = () => {
                     onChange={(e) => setGalleryFile(e.target.files?.[0] || null)}
                   />
                   <div className="d-flex gap-2">
-                    <CButton size="sm" color="primary" disabled={!galleryFile || galleryUploading} onClick={handleGalleryUpload}>
+                    <CButton
+                      size="sm"
+                      color="primary"
+                      disabled={!galleryFile || galleryUploading}
+                      onClick={handleGalleryUpload}
+                    >
                       {galleryUploading ? <CSpinner size="sm" className="me-1" /> : null}
                       {galleryUploading ? 'Uploading…' : 'Upload'}
                     </CButton>
-                    <CButton size="sm" color="outline-secondary" onClick={() => { setGalleryAddMode(null); setGalleryFile(null) }}>Cancel</CButton>
+                    <CButton
+                      size="sm"
+                      color="outline-secondary"
+                      onClick={() => {
+                        setGalleryAddMode(null)
+                        setGalleryFile(null)
+                      }}
+                    >
+                      Cancel
+                    </CButton>
                   </div>
                 </div>
               )}
@@ -1026,45 +1081,89 @@ const DestinationDetail = () => {
                     className="mb-2"
                   />
                   <div className="d-flex gap-2">
-                    <CButton size="sm" color="primary" disabled={!galleryUrlInput.trim() || galleryUploading} onClick={handleGalleryImportUrl}>
+                    <CButton
+                      size="sm"
+                      color="primary"
+                      disabled={!galleryUrlInput.trim() || galleryUploading}
+                      onClick={handleGalleryImportUrl}
+                    >
                       {galleryUploading ? <CSpinner size="sm" className="me-1" /> : null}
                       {galleryUploading ? 'Importing…' : 'Import'}
                     </CButton>
-                    <CButton size="sm" color="outline-secondary" onClick={() => { setGalleryAddMode(null); setGalleryUrlInput('') }}>Cancel</CButton>
+                    <CButton
+                      size="sm"
+                      color="outline-secondary"
+                      onClick={() => {
+                        setGalleryAddMode(null)
+                        setGalleryUrlInput('')
+                      }}
+                    >
+                      Cancel
+                    </CButton>
                   </div>
                 </div>
               )}
 
               {/* Gallery grid */}
               {dest.photoGallery?.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                    gap: 8,
+                  }}
+                >
                   {dest.photoGallery.map((url, i) => (
                     <div
                       key={i}
-                      style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', aspectRatio: '4/3', background: '#f0f0f0' }}
+                      style={{
+                        position: 'relative',
+                        borderRadius: 6,
+                        overflow: 'hidden',
+                        aspectRatio: '4/3',
+                        background: '#f0f0f0',
+                      }}
                     >
                       <img
                         src={url}
                         alt={`Photo ${i + 1}`}
                         onClick={() => setLightbox(i)}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
-                        onError={(e) => { e.target.style.display = 'none' }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                          cursor: 'pointer',
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                        }}
                       />
                       <button
                         onClick={() => handleGalleryDelete(url)}
                         disabled={galleryDeleting === url}
                         style={{
-                          position: 'absolute', top: 4, right: 4,
-                          background: 'rgba(220,53,69,0.85)', border: 'none', borderRadius: 4,
-                          color: '#fff', padding: '2px 6px', cursor: 'pointer', fontSize: 11,
-                          display: 'flex', alignItems: 'center', gap: 3,
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          background: 'rgba(220,53,69,0.85)',
+                          border: 'none',
+                          borderRadius: 4,
+                          color: '#fff',
+                          padding: '2px 6px',
+                          cursor: 'pointer',
+                          fontSize: 11,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 3,
                         }}
                         title="Delete image"
                       >
-                        {galleryDeleting === url
-                          ? <CSpinner size="sm" />
-                          : <CIcon icon={cilTrash} size="sm" />
-                        }
+                        {galleryDeleting === url ? (
+                          <CSpinner size="sm" />
+                        ) : (
+                          <CIcon icon={cilTrash} size="sm" />
+                        )}
                       </button>
                     </div>
                   ))}
@@ -1100,7 +1199,11 @@ const DestinationDetail = () => {
                           <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
                           <CTableDataCell className="small fw-semibold">
                             <span
-                              style={{ color: 'var(--cui-primary)', cursor: 'pointer', textDecoration: 'none' }}
+                              style={{
+                                color: 'var(--cui-primary)',
+                                cursor: 'pointer',
+                                textDecoration: 'none',
+                              }}
                               onClick={() => navigate(`/trips/${t.id}`)}
                             >
                               {t.title}
@@ -1214,18 +1317,33 @@ const DestinationDetail = () => {
           <CButton
             color="link"
             className="text-white position-absolute top-0 end-0 p-3"
-            onClick={() => setLightbox(null)}
-            style={{ fontSize: 24, lineHeight: 1 }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setLightbox(null)
+            }}
+            style={{ fontSize: 24, lineHeight: 1, zIndex: 2 }}
           >
             <CIcon icon={cilX} size="lg" />
           </CButton>
           {lightbox > 0 && (
             <div
-              onClick={(e) => { e.stopPropagation(); setLightbox(lightbox - 1) }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setLightbox(lightbox - 1)
+              }}
               style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0, width: 80,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: '#fff', fontSize: 48, userSelect: 'none',
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 80,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#fff',
+                fontSize: 48,
+                userSelect: 'none',
                 background: 'linear-gradient(to right, rgba(0,0,0,0.3), transparent)',
               }}
             >
@@ -1246,11 +1364,23 @@ const DestinationDetail = () => {
           />
           {lightbox < dest.photoGallery.length - 1 && (
             <div
-              onClick={(e) => { e.stopPropagation(); setLightbox(lightbox + 1) }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setLightbox(lightbox + 1)
+              }}
               style={{
-                position: 'absolute', right: 0, top: 0, bottom: 0, width: 80,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: '#fff', fontSize: 48, userSelect: 'none',
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: 80,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#fff',
+                fontSize: 48,
+                userSelect: 'none',
                 background: 'linear-gradient(to left, rgba(0,0,0,0.3), transparent)',
               }}
             >
