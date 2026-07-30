@@ -1,6 +1,6 @@
 import React from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader,
   CCol, CRow,
@@ -8,6 +8,7 @@ import {
   CListGroup, CListGroupItem,
   CTable, CTableBody, CTableDataCell, CTableHead, CTableHeaderCell, CTableRow,
   CNav, CNavItem, CNavLink, CTabContent, CTabPane,
+  CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilArrowLeft } from '@coreui/icons'
@@ -44,13 +45,24 @@ const Section = ({ title, children }) => (
 const PayoutMethodDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [activeTab, setActiveTab] = React.useState('details')
+  const [confirmVerify, setConfirmVerify] = React.useState(false)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-payout-method', id],
     queryFn: async () => {
       const res = await api.get(`/api/admin/payout-methods/${id}`)
       return res.data.data
+    },
+  })
+
+  const verifyMutation = useMutation({
+    mutationFn: () => api.post(`/api/admin/payout-methods/${id}/verify`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-payout-method', id] })
+      qc.invalidateQueries({ queryKey: ['admin-payout-methods'] })
+      setConfirmVerify(false)
     },
   })
 
@@ -99,6 +111,16 @@ const PayoutMethodDetail = () => {
             <div className="fw-bold fs-5">₹{(totalTransferred / 100).toLocaleString('en-IN')}</div>
             <div className="small text-muted">Total Transferred</div>
             <div className="small text-muted">{payouts.filter(p => p.status === 'SUCCESS').length} of {payouts.length} payouts</div>
+            {!method.verified && (
+              <CButton
+                color="success"
+                size="sm"
+                className="mt-2"
+                onClick={() => setConfirmVerify(true)}
+              >
+                Verify
+              </CButton>
+            )}
           </div>
         </div>
 
@@ -243,6 +265,37 @@ const PayoutMethodDetail = () => {
 
         </CTabContent>
       </CCardBody>
+
+      <CModal visible={confirmVerify} onClose={() => setConfirmVerify(false)}>
+        <CModalHeader>
+          <CModalTitle>Verify Payout Method</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p className="mb-2">
+            Confirm the account details below match what {method.user?.name || 'the user'} submitted, then mark this payout method as verified.
+          </p>
+          {method.type === 'UPI' ? (
+            <div className="small font-monospace bg-body-secondary rounded p-2">{method.upiId}</div>
+          ) : (
+            <div className="small font-monospace bg-body-secondary rounded p-2">
+              {method.accountHolderName} · {method.accountNumberMasked} · {method.ifscCode}
+            </div>
+          )}
+          {verifyMutation.isError && (
+            <CAlert color="danger" className="mt-3 mb-0">
+              {verifyMutation.error?.response?.data?.message || 'Failed to verify payout method.'}
+            </CAlert>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={() => setConfirmVerify(false)}>
+            Cancel
+          </CButton>
+          <CButton color="success" disabled={verifyMutation.isLoading} onClick={() => verifyMutation.mutate()}>
+            {verifyMutation.isLoading ? <CSpinner size="sm" /> : 'Confirm Verify'}
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </CCard>
   )
 }
