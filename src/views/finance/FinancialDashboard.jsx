@@ -201,7 +201,8 @@ const FinancialDashboard = () => {
                 { label: 'Refunds', to: '/payments/refunds', badge: null },
                 { label: 'Payout List', to: '/payouts', badge: s.pendingPayoutsCount > 0 ? s.pendingPayoutsCount : null, badgeColor: 'warning' },
                 { label: 'Payout Schedule', to: '/payouts/schedule', badge: null },
-                { label: 'Linked Accounts', to: '/payments/linked-accounts', badge: null },
+                { label: 'Payout Methods', to: '/payouts/methods', badge: null },
+                { label: 'Linked Accounts', to: '/payouts/linked-accounts', badge: null },
               ].map(({ label, to, badge, badgeColor }) => (
                 <div
                   key={to}

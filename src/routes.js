@@ -32,6 +32,8 @@ const DiscountList = React.lazy(() => import('./views/finance/DiscountList'))
 const RefundDetail = React.lazy(() => import('./views/finance/RefundDetail'))
 const LinkedAccounts = React.lazy(() => import('./views/finance/LinkedAccounts'))
 const LinkedAccountDetail = React.lazy(() => import('./views/finance/LinkedAccountDetail'))
+const PayoutMethods = React.lazy(() => import('./views/finance/PayoutMethods'))
+const PayoutMethodDetail = React.lazy(() => import('./views/finance/PayoutMethodDetail'))
 
 // Operations
 const CaseList = React.lazy(() => import('./views/operations/CaseList'))
@@ -94,10 +96,12 @@ export const routes = [
   { path: '/payments/refunds/:id', name: 'Refund Detail', element: RefundDetail },
   { path: '/payments/refunds', name: 'Refunds', element: RefundList },
   { path: '/payments/coupons', name: 'Coupons', element: DiscountList },
-  { path: '/payments/linked-accounts/:id', name: 'Linked Account Detail', element: LinkedAccountDetail },
-  { path: '/payments/linked-accounts', name: 'Linked Accounts', element: LinkedAccounts },
   { path: '/payments/:id', name: 'Payment Detail', element: PaymentDetail },
   { path: '/payments', name: 'Payments', element: PaymentList },
+  { path: '/payouts/linked-accounts/:id', name: 'Linked Account Detail', element: LinkedAccountDetail },
+  { path: '/payouts/linked-accounts', name: 'Linked Accounts', element: LinkedAccounts },
+  { path: '/payouts/methods/:id', name: 'Payout Method Detail', element: PayoutMethodDetail },
+  { path: '/payouts/methods', name: 'Payout Methods', element: PayoutMethods },
   { path: '/payouts/schedule', name: 'Payout Schedule', element: PayoutSchedule },
   { path: '/payouts/:id', name: 'Payout Detail', element: PayoutDetail },
   { path: '/payouts', name: 'Payouts', element: PayoutList },
