@@ -30,15 +30,6 @@ import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 
 const fmtRate = (r) => `${(r * 100).toFixed(2)}%`
 
-const isEffectivelyActive = (p) => {
-  const now = new Date()
-  const from = p.effectiveFrom ? new Date(p.effectiveFrom) : null
-  const until = p.effectiveUntil ? new Date(p.effectiveUntil) : null
-  if (!from || from > now) return false
-  if (until && until < now) return false
-  return true
-}
-
 const TAX_KINDS = ['GST_ON_PLATFORM_FEE', 'GST_ON_TOUR_OPERATOR', 'TCS', 'CGST', 'SGST', 'IGST']
 
 const EMPTY_FORM = {
@@ -177,7 +168,7 @@ const handleSave = () => {
               </CTableHead>
               <CTableBody>
                 {policies.map((p, idx) => {
-                  const active = isEffectivelyActive(p)
+                  const active = p.active
                   return (
                     <CTableRow key={p.id}>
                       <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
