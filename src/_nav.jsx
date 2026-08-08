@@ -50,6 +50,12 @@ const _nav = [
   //   to: '/verification/service-providers',
   //   icon: <CIcon icon={cilBadge} customClassName="nav-icon" />,
   // },
+  {
+    component: CNavItem,
+    name: 'Verification Documents',
+    to: '/verification/documents',
+    icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+  },
 
   { component: CNavTitle, name: 'Content' },
   {
@@ -198,7 +204,11 @@ const _nav = [
       { component: CNavItem, name: 'Platform Fee', to: '/settings/platform-fee' },
       { component: CNavItem, name: 'Tax Policy', to: '/settings/tax' },
       { component: CNavItem, name: 'Payout / Refund Policy', to: '/settings/policies' },
-      { component: CNavItem, name: 'Notification Templates', to: '/settings/notification-templates' },
+      {
+        component: CNavItem,
+        name: 'Notification Templates',
+        to: '/settings/notification-templates',
+      },
     ],
   },
 ]

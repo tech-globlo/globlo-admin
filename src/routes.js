@@ -7,6 +7,7 @@ const UserList = React.lazy(() => import('./views/users/UserList'))
 const UserDetail = React.lazy(() => import('./views/users/UserDetail'))
 const ServiceDetail = React.lazy(() => import('./views/users/ServiceDetail'))
 const SpVerification = React.lazy(() => import('./views/users/SpVerification'))
+const VerificationDocuments = React.lazy(() => import('./views/users/VerificationDocuments'))
 
 // Destinations
 const DestinationList = React.lazy(() => import('./views/destinations/DestinationList'))
@@ -77,6 +78,11 @@ export const routes = [
   { path: '/users/:id', name: 'User Detail', element: UserDetail },
   { path: '/services/:id', name: 'Service Detail', element: ServiceDetail },
   { path: '/verification/service-providers', name: 'SP Verification', element: SpVerification },
+  {
+    path: '/verification/documents',
+    name: 'Verification Documents',
+    element: VerificationDocuments,
+  },
 
   // Destinations
   { path: '/destinations', name: 'Destinations', element: DestinationList },
@@ -98,7 +104,11 @@ export const routes = [
   { path: '/payments/coupons', name: 'Coupons', element: DiscountList },
   { path: '/payments/:id', name: 'Payment Detail', element: PaymentDetail },
   { path: '/payments', name: 'Payments', element: PaymentList },
-  { path: '/payouts/linked-accounts/:id', name: 'Linked Account Detail', element: LinkedAccountDetail },
+  {
+    path: '/payouts/linked-accounts/:id',
+    name: 'Linked Account Detail',
+    element: LinkedAccountDetail,
+  },
   { path: '/payouts/linked-accounts', name: 'Linked Accounts', element: LinkedAccounts },
   { path: '/payouts/methods/:id', name: 'Payout Method Detail', element: PayoutMethodDetail },
   { path: '/payouts/methods', name: 'Payout Methods', element: PayoutMethods },
