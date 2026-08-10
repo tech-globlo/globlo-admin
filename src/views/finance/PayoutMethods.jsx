@@ -1,4 +1,4 @@
-﻿﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -21,17 +21,17 @@ import { cilSearch } from '@coreui/icons'
 import SortableHeader from '../../components/SortableHeader'
 import AdminTableFooter from '../../components/AdminTableFooter'
 import api from '../../lib/api'
-import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
+import { fmtDate } from '../../lib/dateUtils'
 
-const fetchAccounts = async ({ limit, offset, sortBy, sortOrder }) => {
+const fetchMethods = async ({ limit, offset, sortBy, sortOrder }) => {
   const params = new URLSearchParams({ limit, offset })
   if (sortBy) params.set('sortBy', sortBy)
   if (sortOrder) params.set('sortOrder', sortOrder)
-  const res = await api.get(`/api/admin/linked-accounts?${params}`)
+  const res = await api.get(`/api/admin/payout-methods?${params}`)
   return res.data.data
 }
 
-const LinkedAccounts = () => {
+const PayoutMethods = () => {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -46,16 +46,16 @@ const LinkedAccounts = () => {
   }
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['admin-linked-accounts', { page, pageSize, sortBy, sortOrder }],
-    queryFn: () => fetchAccounts({ limit: pageSize, offset, sortBy, sortOrder }),
+    queryKey: ['admin-payout-methods', { page, pageSize, sortBy, sortOrder }],
+    queryFn: () => fetchMethods({ limit: pageSize, offset, sortBy, sortOrder }),
     placeholderData: (prev) => prev,
   })
 
   return (
     <CCard>
       <CCardHeader>
-        <strong>Linked Accounts (Connected Accounts)</strong>
-        {data && <span className="ms-2 text-muted small">({data.total} accounts)</span>}
+        <strong>Payout Methods</strong>
+        {data && <span className="ms-2 text-muted small">({data.total} methods)</span>}
       </CCardHeader>
       <CCardBody>
         {isLoading && (
@@ -63,7 +63,7 @@ const LinkedAccounts = () => {
             <CSpinner color="primary" />
           </div>
         )}
-        {isError && <CAlert color="danger">Failed to load linked accounts.</CAlert>}
+        {isError && <CAlert color="danger">Failed to load payout methods.</CAlert>}
 
         {data && (
           <>
@@ -73,22 +73,22 @@ const LinkedAccounts = () => {
                   <CTableHeaderCell style={{ width: 48 }}>Sr No</CTableHeaderCell>
                   <CTableHeaderCell>User</CTableHeaderCell>
                   <CTableHeaderCell>Role</CTableHeaderCell>
-                  <CTableHeaderCell>Gateway ID</CTableHeaderCell>
                   <SortableHeader
-                    field="kycStatus"
-                    label="KYC Status"
+                    field="type"
+                    label="Type"
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
                   />
+                  <CTableHeaderCell>Label / Account</CTableHeaderCell>
                   <SortableHeader
-                    field="onboardStatus"
-                    label="Onboard Status"
+                    field="verified"
+                    label="Verified"
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
                   />
-                  <CTableHeaderCell>Active</CTableHeaderCell>
+                  <CTableHeaderCell>Primary</CTableHeaderCell>
                   <SortableHeader
                     field="createdAt"
                     label="Created"
@@ -100,48 +100,40 @@ const LinkedAccounts = () => {
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {data.accounts.map((a, idx) => (
-                  <CTableRow key={a.id}>
+                {data.methods.map((m, idx) => (
+                  <CTableRow key={m.id}>
                     <CTableDataCell className="small text-muted">{offset + idx + 1}</CTableDataCell>
                     <CTableDataCell>
-                      <div className="small fw-semibold">{a.user?.name}</div>
-                      <div className="small text-muted">{a.user?.email}</div>
+                      <div className="small fw-semibold">{m.user?.name}</div>
+                      <div className="small text-muted">{m.user?.email}</div>
                     </CTableDataCell>
                     <CTableDataCell>
                       <CBadge color="light" textColor="dark">
-                        {a.user?.role}
+                        {m.user?.role}
+                      </CBadge>
+                    </CTableDataCell>
+                    <CTableDataCell className="small">{m.type}</CTableDataCell>
+                    <CTableDataCell className="small text-muted">
+                      {m.type === 'UPI' ? m.upiId : (m.label || m.accountNumberMasked || '-')}
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      <CBadge color={m.verified ? 'success' : 'warning'}>
+                        {m.verified ? 'Verified' : 'Unverified'}
+                      </CBadge>
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      <CBadge color={m.primary ? 'info' : 'secondary'}>
+                        {m.primary ? 'Yes' : 'No'}
                       </CBadge>
                     </CTableDataCell>
                     <CTableDataCell className="small text-muted">
-                      {a.accountId?.slice(0, 16) || '-'}
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      <CBadge
-                        color={
-                          a.kycStatus === 'verified'
-                            ? 'success'
-                            : a.kycStatus
-                              ? 'warning'
-                              : 'secondary'
-                        }
-                      >
-                        {a.kycStatus || 'N/A'}
-                      </CBadge>
-                    </CTableDataCell>
-                    <CTableDataCell className="small">{a.onboardStatus || '-'}</CTableDataCell>
-                    <CTableDataCell>
-                      <CBadge color={a.isActive ? 'success' : 'secondary'}>
-                        {a.isActive ? 'Yes' : 'No'}
-                      </CBadge>
-                    </CTableDataCell>
-                    <CTableDataCell className="small text-muted">
-                      {fmtDate(a.createdAt)}
+                      {fmtDate(m.createdAt)}
                     </CTableDataCell>
                     <CTableDataCell>
                       <CButton
                         size="sm"
                         color="outline-primary"
-                        onClick={() => navigate(`/payouts/linked-accounts/${a.id}`)}
+                        onClick={() => navigate(`/payouts/methods/${m.id}`)}
                       >
                         <CIcon icon={cilSearch} size="sm" />
                       </CButton>
@@ -168,4 +160,4 @@ const LinkedAccounts = () => {
   )
 }
 
-export default LinkedAccounts
+export default PayoutMethods

@@ -32,7 +32,7 @@ const MEDIA_TYPES = [
   'PROFILE_PHOTO', 'PORTFOLIO',
   'TRIP_COVER', 'TRIP_GALLERY', 'TRIP_HIGHLIGHT', 'TRIP_ITINERARY',
   'DESTINATION_PHOTO', 'REVIEW_PHOTO', 'MESSAGE_ATTACHMENT',
-  'SERVICE_PHOTO', 'ID_PROOF', 'ADDRESS_PROOF', 'LICENSE_DOC', 'OTHER',
+  'SERVICE_PHOTO', 'VERIFICATION_DOCUMENT', 'OTHER',
 ]
 
 // -- Tile card ----------------------------------------------------------------
@@ -177,6 +177,12 @@ const MediaSidebar = ({ item, brokenIds, onClose, onDelete, onToggleApproval, de
   if (item.destination) usedIn.push({ label: 'Destination', value: item.destination.name })
   if (item.review) usedIn.push({ label: 'Review', value: item.review.id })
   if (item.serviceDetails) usedIn.push({ label: 'Service', value: item.serviceDetails.title })
+  if (item.verificationDocument) {
+    usedIn.push({
+      label: 'Verification Doc',
+      value: `${(item.verificationDocument.docType || '').replace(/_/g, ' ').toLowerCase()} (${item.verificationDocument.verificationStatus})`,
+    })
+  }
 
   return (
     <COffcanvas placement="end" visible={!!item} onHide={onClose} scroll backdrop={false} style={{ width: 340 }}>

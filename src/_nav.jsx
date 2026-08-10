@@ -50,6 +50,12 @@ const _nav = [
   //   to: '/verification/service-providers',
   //   icon: <CIcon icon={cilBadge} customClassName="nav-icon" />,
   // },
+  {
+    component: CNavItem,
+    name: 'Verification Documents',
+    to: '/verification/documents',
+    icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+  },
 
   { component: CNavTitle, name: 'Content' },
   {
@@ -100,6 +106,8 @@ const _nav = [
     items: [
       { component: CNavItem, name: 'Payout List', to: '/payouts', end: true },
       { component: CNavItem, name: 'Schedule', to: '/payouts/schedule' },
+      { component: CNavItem, name: 'Payout Methods', to: '/payouts/methods' },
+      { component: CNavItem, name: 'Linked Accounts', to: '/payouts/linked-accounts' },
     ],
   },
   {
@@ -111,7 +119,6 @@ const _nav = [
       { component: CNavItem, name: 'All Payments', to: '/payments', end: true },
       { component: CNavItem, name: 'Refunds', to: '/payments/refunds', end: true },
       { component: CNavItem, name: 'Coupons', to: '/payments/coupons', end: true },
-      { component: CNavItem, name: 'Linked Accounts', to: '/payments/linked-accounts', end: true },
     ],
   },
 
@@ -197,7 +204,11 @@ const _nav = [
       { component: CNavItem, name: 'Platform Fee', to: '/settings/platform-fee' },
       { component: CNavItem, name: 'Tax Policy', to: '/settings/tax' },
       { component: CNavItem, name: 'Payout / Refund Policy', to: '/settings/policies' },
-      { component: CNavItem, name: 'Notification Templates', to: '/settings/notification-templates' },
+      {
+        component: CNavItem,
+        name: 'Notification Templates',
+        to: '/settings/notification-templates',
+      },
     ],
   },
 ]

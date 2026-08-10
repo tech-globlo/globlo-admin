@@ -35,9 +35,19 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
-  cilPencil, cilArrowLeft, cilPlus, cilTrash, cilZoomIn,
-  cilBell, cilHistory, cilMoney, cilCalendar, cilSearch,
-  cilStar, cilShareAll, cilBookmark,
+  cilPencil,
+  cilArrowLeft,
+  cilPlus,
+  cilTrash,
+  cilZoomIn,
+  cilBell,
+  cilHistory,
+  cilMoney,
+  cilCalendar,
+  cilSearch,
+  cilStar,
+  cilShareAll,
+  cilBookmark,
 } from '@coreui/icons'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
@@ -52,6 +62,13 @@ const STATUS_COLOR = {
   BANNED: 'danger',
   DEACTIVATED: 'secondary',
 }
+const DOC_STATUS_COLOR = {
+  PENDING: 'warning',
+  VERIFIED: 'success',
+  REJECTED: 'danger',
+  EXPIRED: 'secondary',
+}
+const humanizeDocType = (s) => (s || '').replace(/_/g, ' ').toLowerCase()
 const TRIP_STATUS_COLOR = {
   ACTIVE: 'success',
   RUNNING: 'info',
@@ -149,13 +166,18 @@ const ActionPanel = ({ user, id, qc }) => {
   const [reason, setReason] = useState('')
   const [statusError, setStatusError] = useState(null)
 
-
   const [activityOffset, setActivityOffset] = useState(0)
 
-  const { data: activityData, isLoading: interactionsLoading, isFetching: interactionsFetching } = useQuery({
+  const {
+    data: activityData,
+    isLoading: interactionsLoading,
+    isFetching: interactionsFetching,
+  } = useQuery({
     queryKey: ['admin-user-interactions', id, activityOffset],
     queryFn: async () => {
-      const res = await api.get(`/api/admin/users/${id}/interactions?limit=${ACTIVITY_PAGE}&offset=${activityOffset}`)
+      const res = await api.get(
+        `/api/admin/users/${id}/interactions?limit=${ACTIVITY_PAGE}&offset=${activityOffset}`,
+      )
       return res.data.data
     },
     keepPreviousData: true,
@@ -180,7 +202,10 @@ const ActionPanel = ({ user, id, qc }) => {
   })
 
   const handleStatusSubmit = () => {
-    if (!newStatus || !reason.trim()) { setStatusError('Status and reason are required'); return }
+    if (!newStatus || !reason.trim()) {
+      setStatusError('Status and reason are required')
+      return
+    }
     statusMut.mutate({ status: newStatus, reason })
   }
 
@@ -210,7 +235,11 @@ const ActionPanel = ({ user, id, qc }) => {
             </CButton>
           </div>
           <div className="d-flex flex-column gap-1">
-            <CButton size="sm" color="outline-secondary" onClick={() => navigate('/payments?userId=' + id)}>
+            <CButton
+              size="sm"
+              color="outline-secondary"
+              onClick={() => navigate('/payments?userId=' + id)}
+            >
               <CIcon icon={cilMoney} size="sm" className="me-1" />
               View Payments
             </CButton>
@@ -224,33 +253,56 @@ const ActionPanel = ({ user, id, qc }) => {
           <div>
             <strong className="small">Recent Activity</strong>
             {activityTotal > 0 && (
-              <span className="text-muted small ms-1">({activityOffset + 1}–{Math.min(activityOffset + ACTIVITY_PAGE, activityTotal)} of {activityTotal})</span>
+              <span className="text-muted small ms-1">
+                ({activityOffset + 1}–{Math.min(activityOffset + ACTIVITY_PAGE, activityTotal)} of{' '}
+                {activityTotal})
+              </span>
             )}
           </div>
           {interactionsFetching && !interactionsLoading && <CSpinner size="sm" />}
         </CCardHeader>
         <CCardBody className="p-0">
           {interactionsLoading ? (
-            <div className="text-center py-3"><CSpinner size="sm" /></div>
+            <div className="text-center py-3">
+              <CSpinner size="sm" />
+            </div>
           ) : interactions.length > 0 ? (
             <>
               {interactions.map((i) => (
                 <div key={i.id} className="d-flex align-items-start gap-2 px-3 py-2 border-bottom">
-                  <CIcon icon={INTERACTION_ICON[i.action] || cilHistory} size="sm" className="text-muted mt-1 flex-shrink-0" />
+                  <CIcon
+                    icon={INTERACTION_ICON[i.action] || cilHistory}
+                    size="sm"
+                    className="text-muted mt-1 flex-shrink-0"
+                  />
                   <div className="flex-grow-1 min-w-0">
                     <div className="small fw-semibold">
                       {i.action} <span className="fw-normal text-muted">{i.entityType}</span>
                     </div>
-                    <div className="text-muted" style={{ fontSize: '0.7rem' }}>{fmtDateTime(i.createdAt)}</div>
+                    <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                      {fmtDateTime(i.createdAt)}
+                    </div>
                   </div>
                 </div>
               ))}
               {(hasPrev || hasMore) && (
                 <div className="d-flex justify-content-between px-3 py-2">
-                  <CButton size="sm" color="link" className="p-0 small" disabled={!hasPrev} onClick={() => setActivityOffset((o) => Math.max(0, o - ACTIVITY_PAGE))}>
+                  <CButton
+                    size="sm"
+                    color="link"
+                    className="p-0 small"
+                    disabled={!hasPrev}
+                    onClick={() => setActivityOffset((o) => Math.max(0, o - ACTIVITY_PAGE))}
+                  >
                     ← Prev
                   </CButton>
-                  <CButton size="sm" color="link" className="p-0 small" disabled={!hasMore} onClick={() => setActivityOffset((o) => o + ACTIVITY_PAGE)}>
+                  <CButton
+                    size="sm"
+                    color="link"
+                    className="p-0 small"
+                    disabled={!hasMore}
+                    onClick={() => setActivityOffset((o) => o + ACTIVITY_PAGE)}
+                  >
                     Next →
                   </CButton>
                 </div>
@@ -263,12 +315,22 @@ const ActionPanel = ({ user, id, qc }) => {
       </CCard>
 
       {/* Change Status Modal */}
-      <CModal visible={statusModal} onClose={() => { setStatusModal(false); setStatusError(null) }}>
+      <CModal
+        visible={statusModal}
+        onClose={() => {
+          setStatusModal(false)
+          setStatusError(null)
+        }}
+      >
         <CModalHeader>
           <CModalTitle>Update Account Status</CModalTitle>
         </CModalHeader>
         <CModalBody>
-          {statusError && <CAlert color="danger" className="py-2 small mb-3">{statusError}</CAlert>}
+          {statusError && (
+            <CAlert color="danger" className="py-2 small mb-3">
+              {statusError}
+            </CAlert>
+          )}
           <div className="mb-3">
             <label className="form-label small fw-semibold">New Status</label>
             <CFormSelect value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
@@ -292,7 +354,13 @@ const ActionPanel = ({ user, id, qc }) => {
           </div>
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={() => { setStatusModal(false); setStatusError(null) }}>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setStatusModal(false)
+              setStatusError(null)
+            }}
+          >
             Cancel
           </CButton>
           <CButton color="primary" onClick={handleStatusSubmit} disabled={statusMut.isLoading}>
@@ -320,7 +388,11 @@ const UserDetail = () => {
   const [spHotspotSelected, setSpHotspotSelected] = useState('')
   const [spDestError, setSpDestError] = useState(null)
 
-  const { data: user, isLoading, isError } = useQuery({
+  const {
+    data: user,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['admin-user', id],
     queryFn: async () => {
       const res = await api.get(`/api/admin/users/${id}`)
@@ -370,7 +442,11 @@ const UserDetail = () => {
   })
 
   if (isLoading)
-    return <div className="text-center py-5"><CSpinner color="primary" /></div>
+    return (
+      <div className="text-center py-5">
+        <CSpinner color="primary" />
+      </div>
+    )
   if (isError || !user) return <CAlert color="danger">Failed to load user.</CAlert>
 
   // Use the denormalized aggregate — `receivedReviews` is capped at 10 rows
@@ -399,8 +475,13 @@ const UserDetail = () => {
       {/* Header Card */}
       <CCard className="mb-4">
         <CCardBody>
-          <CButton color="link" className="p-0 mb-3 text-muted small d-block" onClick={() => navigate(-1)}>
-            <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
+          <CButton
+            color="link"
+            className="p-0 mb-3 text-muted small d-block"
+            onClick={() => navigate(-1)}
+          >
+            <CIcon icon={cilArrowLeft} className="me-1" size="sm" />
+            Back
           </CButton>
           <div className="d-flex align-items-start gap-3 flex-wrap">
             <div className="flex-shrink-0">
@@ -413,10 +494,16 @@ const UserDetail = () => {
               ) : (
                 <div
                   style={{
-                    width: 72, height: 72, borderRadius: '50%',
-                    background: '#321fdb', color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 26, fontWeight: 700,
+                    width: 72,
+                    height: 72,
+                    borderRadius: '50%',
+                    background: '#321fdb',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 26,
+                    fontWeight: 700,
                   }}
                 >
                   {(user.name || '?').charAt(0).toUpperCase()}
@@ -427,25 +514,41 @@ const UserDetail = () => {
             <div className="flex-grow-1 min-w-0">
               <h5 className="mb-1 fw-bold">{user.name || '(No name)'}</h5>
               <div className="small text-muted mb-1">
-                {user.email}{user.phone && ` - ${user.phone}`}
+                {user.email}
+                {user.phone && ` - ${user.phone}`}
               </div>
               <div className="d-flex gap-2 flex-wrap align-items-center">
                 <CBadge color="primary">{user.role?.replace('_', ' ')}</CBadge>
-                <CBadge color={STATUS_COLOR[user.accountStatus] || 'secondary'}>{user.accountStatus}</CBadge>
+                <CBadge color={STATUS_COLOR[user.accountStatus] || 'secondary'}>
+                  {user.accountStatus}
+                </CBadge>
                 {user.verified && <CBadge color="info">Verified</CBadge>}
-                {avgRating && <CBadge color="warning" textColor="dark">★ {avgRating}</CBadge>}
+                {avgRating && (
+                  <CBadge color="warning" textColor="dark">
+                    ★ {avgRating}
+                  </CBadge>
+                )}
               </div>
             </div>
-
           </div>
 
           <div className="d-flex flex-wrap mt-3 border-top pt-3" style={{ gap: 0 }}>
             <StatCard label="Trips" value={user._count?.createdTrips} />
-            {isPG && <StatCard label="Payments" value={user._count?.paymentsSent} color="success" />}
+            {isPG && (
+              <StatCard label="Payments" value={user._count?.paymentsSent} color="success" />
+            )}
             <StatCard label="Bookings" value={user._count?.bookingParticipants} color="info" />
             <StatCard label="Reviews" value={user._count?.receivedReviews} color="warning" />
-            {isSP && <StatCard label="Assignments" value={user._count?.tripProviderAssignmentsAsProvider} color="primary" />}
-            {hasPayouts && <StatCard label="Payouts" value={user._count?.payouts} color="success" />}
+            {isSP && (
+              <StatCard
+                label="Assignments"
+                value={user._count?.tripProviderAssignmentsAsProvider}
+                color="primary"
+              />
+            )}
+            {hasPayouts && (
+              <StatCard label="Payouts" value={user._count?.payouts} color="success" />
+            )}
             <StatCard label="Favourites" value={user._count?.favorites} color="secondary" />
             {(isPG || isSP) && (
               <StatCard label="Favorited By" value={favoritesReceivedCount} color="secondary" />
@@ -522,9 +625,15 @@ const UserDetail = () => {
                 <CTabPane visible={activeTab === 'details'}>
                   {user.role === 'PHOTOGRAPHER' && user.photographer ? (
                     <CListGroup flush>
-                      <InfoRow label="Preferred Genres" value={user.photographer.preferredGenres?.join(', ')} />
+                      <InfoRow
+                        label="Preferred Genres"
+                        value={user.photographer.preferredGenres?.join(', ')}
+                      />
                       <InfoRow label="Years Experience" value={user.photographer.yearsExperience} />
-                      <InfoRow label="Preferred Trip Type" value={user.photographer.preferredTripType} />
+                      <InfoRow
+                        label="Preferred Trip Type"
+                        value={user.photographer.preferredTripType}
+                      />
                       <InfoRow label="Equipment" value={user.photographer.equipment} />
                       <InfoRow label="Portfolio URL" value={user.photographer.portfolioUrl} />
                     </CListGroup>
@@ -532,34 +641,68 @@ const UserDetail = () => {
                     <CListGroup flush>
                       <InfoRow label="Agency" value={user.tripManager.agencyName} />
                       <InfoRow label="Experience Years" value={user.tripManager.experienceYears} />
-                      <InfoRow label="Operating Regions" value={user.tripManager.operatingRegions?.join(', ')} />
+                      <InfoRow
+                        label="Operating Regions"
+                        value={user.tripManager.operatingRegions?.join(', ')}
+                      />
                       <InfoRow label="Max Group Size" value={user.tripManager.maxGroupSize} />
-                      <InfoRow label="Specializations" value={user.tripManager.specializations?.join(', ')} />
+                      <InfoRow
+                        label="Specializations"
+                        value={user.tripManager.specializations?.join(', ')}
+                      />
                     </CListGroup>
                   ) : user.role === 'SERVICE_PROVIDER' && user.serviceProvider ? (
                     <>
                       <CRow>
                         <CCol md={6}>
                           <CListGroup flush>
-                            <InfoRow label="Business Name" value={user.serviceProvider.businessName} />
+                            <InfoRow
+                              label="Business Name"
+                              value={user.serviceProvider.businessName}
+                            />
                             <InfoRow label="Type" value={user.serviceProvider.type} />
                             <InfoRow
                               label="Profile Status"
                               value={
-                                <CBadge color={user.serviceProvider.profileStatus === 'APPROVED' ? 'success' : 'warning'}>
+                                <CBadge
+                                  color={
+                                    user.serviceProvider.profileStatus === 'APPROVED'
+                                      ? 'success'
+                                      : 'warning'
+                                  }
+                                >
                                   {user.serviceProvider.profileStatus}
                                 </CBadge>
                               }
                             />
-                            <InfoRow label="SP Verified" value={user.serviceProvider.verified ? 'Yes' : 'No'} />
+                            <InfoRow
+                              label="SP Verified"
+                              value={user.serviceProvider.verified ? 'Yes' : 'No'}
+                            />
                           </CListGroup>
                         </CCol>
                         <CCol md={6}>
                           <CListGroup flush>
-                            <InfoRow label="Rating" value={user.serviceProvider.rating ? `★ ${user.serviceProvider.rating}` : null} />
-                            <InfoRow label="Licensed" value={user.serviceProvider.licensed ? 'Yes' : 'No'} />
-                            <InfoRow label="Languages" value={user.serviceProvider.languagesSpoken?.join(', ')} />
-                            <InfoRow label="Experience Years" value={user.serviceProvider.yearsExperience} />
+                            <InfoRow
+                              label="Rating"
+                              value={
+                                user.serviceProvider.rating
+                                  ? `★ ${user.serviceProvider.rating}`
+                                  : null
+                              }
+                            />
+                            <InfoRow
+                              label="Licensed"
+                              value={user.serviceProvider.licensed ? 'Yes' : 'No'}
+                            />
+                            <InfoRow
+                              label="Languages"
+                              value={user.serviceProvider.languagesSpoken?.join(', ')}
+                            />
+                            <InfoRow
+                              label="Experience Years"
+                              value={user.serviceProvider.yearsExperience}
+                            />
                           </CListGroup>
                         </CCol>
                       </CRow>
@@ -571,7 +714,12 @@ const UserDetail = () => {
                           <CButton
                             size="sm"
                             color="primary"
-                            onClick={() => { setSpDestModal(true); setSpDestError(null); setSpDestSelected(''); setSpHotspotSelected('') }}
+                            onClick={() => {
+                              setSpDestModal(true)
+                              setSpDestError(null)
+                              setSpDestSelected('')
+                              setSpHotspotSelected('')
+                            }}
                           >
                             <CIcon icon={cilPlus} className="me-1" size="sm" />
                             Add Destination
@@ -592,20 +740,35 @@ const UserDetail = () => {
                                 <CTableRow key={spd.id}>
                                   <CTableDataCell
                                     className="small fw-semibold"
-                                    style={spd.destination?.id ? { cursor: 'pointer', color: 'var(--cui-primary)' } : undefined}
-                                    onClick={() => spd.destination?.id && navigate('/destinations/' + spd.destination.id)}
+                                    style={
+                                      spd.destination?.id
+                                        ? { cursor: 'pointer', color: 'var(--cui-primary)' }
+                                        : undefined
+                                    }
+                                    onClick={() =>
+                                      spd.destination?.id &&
+                                      navigate('/destinations/' + spd.destination.id)
+                                    }
                                   >
                                     {spd.destination?.name || 'User-defined'}
                                   </CTableDataCell>
-                                  <CTableDataCell className="small text-muted">{spd.destination?.country || '-'}</CTableDataCell>
                                   <CTableDataCell className="small text-muted">
-                                    {[spd.destination?.region, spd.destination?.state].filter(Boolean).join(', ') || '-'}
+                                    {spd.destination?.country || '-'}
+                                  </CTableDataCell>
+                                  <CTableDataCell className="small text-muted">
+                                    {[spd.destination?.region, spd.destination?.state]
+                                      .filter(Boolean)
+                                      .join(', ') || '-'}
                                   </CTableDataCell>
                                   <CTableDataCell>
                                     <CButton
                                       size="sm"
                                       color="outline-danger"
-                                      onClick={() => window.confirm(`Remove ${spd.destination?.name} from this SP?`) && removeSPDestMut.mutate(spd.id)}
+                                      onClick={() =>
+                                        window.confirm(
+                                          `Remove ${spd.destination?.name} from this SP?`,
+                                        ) && removeSPDestMut.mutate(spd.id)
+                                      }
                                     >
                                       <CIcon icon={cilTrash} size="sm" className="me-1" />
                                       Remove
@@ -616,7 +779,9 @@ const UserDetail = () => {
                             </CTableBody>
                           </CTable>
                         ) : (
-                          <div className="small text-muted py-2">No operating destinations assigned yet.</div>
+                          <div className="small text-muted py-2">
+                            No operating destinations assigned yet.
+                          </div>
                         )}
                       </div>
                       {user.serviceDetailsByProviderUser?.length > 0 && (
@@ -634,13 +799,23 @@ const UserDetail = () => {
                             <CTableBody>
                               {user.serviceDetailsByProviderUser.map((sd) => (
                                 <CTableRow key={sd.id}>
-                                  <CTableDataCell className="small fw-semibold">{sd.title}</CTableDataCell>
-                                  <CTableDataCell className="small">{sd.serviceType}</CTableDataCell>
+                                  <CTableDataCell className="small fw-semibold">
+                                    {sd.title}
+                                  </CTableDataCell>
                                   <CTableDataCell className="small">
-                                    {sd.priceMinor != null ? `${fmt(sd.priceMinor)} / ${sd.priceUnit || 'unit'}` : '-'}
+                                    {sd.serviceType}
+                                  </CTableDataCell>
+                                  <CTableDataCell className="small">
+                                    {sd.priceMinor != null
+                                      ? `${fmt(sd.priceMinor)} / ${sd.priceUnit || 'unit'}`
+                                      : '-'}
                                   </CTableDataCell>
                                   <CTableDataCell>
-                                    <CButton size="sm" color="outline-primary" onClick={() => navigate('/services/' + sd.id)}>
+                                    <CButton
+                                      size="sm"
+                                      color="outline-primary"
+                                      onClick={() => navigate('/services/' + sd.id)}
+                                    >
                                       <CIcon icon={cilZoomIn} size="sm" className="me-1" />
                                       View
                                     </CButton>
@@ -654,6 +829,60 @@ const UserDetail = () => {
                     </>
                   ) : (
                     <p className="text-muted small py-3">No role profile data found.</p>
+                  )}
+
+                  {user.verificationDocuments?.length > 0 && (
+                    <div className="mt-4">
+                      <div className="fw-semibold small mb-2">
+                        Identity Verification ({user.verificationDocuments.length})
+                      </div>
+                      <div className="d-flex flex-column gap-2">
+                        {user.verificationDocuments.map((doc) => (
+                          <div key={doc.id} className="p-3 bg-body-secondary rounded">
+                            <div className="d-flex justify-content-between align-items-start mb-1">
+                              <div className="small fw-semibold text-capitalize">
+                                {humanizeDocType(doc.docType)}
+                              </div>
+                              <CBadge
+                                color={DOC_STATUS_COLOR[doc.verificationStatus] || 'secondary'}
+                              >
+                                {doc.verificationStatus}
+                              </CBadge>
+                            </div>
+                            {doc.verificationStatus === 'REJECTED' && doc.rejectionReason && (
+                              <div className="small text-danger mb-1">
+                                Reason: {doc.rejectionReason}
+                              </div>
+                            )}
+                            {doc.media?.length > 0 && (
+                              <div className="d-flex gap-2 mt-1">
+                                {doc.media.map((m) => (
+                                  <a
+                                    key={m.id}
+                                    href={m.viewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="small"
+                                  >
+                                    {m.mimeType?.startsWith('image/') ? 'View image' : 'View file'}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            {doc.verificationStatus === 'PENDING' && (
+                              <CButton
+                                size="sm"
+                                color="link"
+                                className="p-0 mt-1"
+                                onClick={() => navigate('/verification/documents')}
+                              >
+                                Review in Verification Queue
+                              </CButton>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </CTabPane>
 
@@ -685,10 +914,16 @@ const UserDetail = () => {
                               </span>
                             </CTableDataCell>
                             <CTableDataCell>
-                              <CBadge color={TRIP_STATUS_COLOR[t.status] || 'secondary'}>{t.status}</CBadge>
+                              <CBadge color={TRIP_STATUS_COLOR[t.status] || 'secondary'}>
+                                {t.status}
+                              </CBadge>
                             </CTableDataCell>
-                            <CTableDataCell className="small text-center">{t._count?.participants ?? '-'}</CTableDataCell>
-                            <CTableDataCell className="small text-muted">{fmtDate(t.createdAt)}</CTableDataCell>
+                            <CTableDataCell className="small text-center">
+                              {t._count?.participants ?? '-'}
+                            </CTableDataCell>
+                            <CTableDataCell className="small text-muted">
+                              {fmtDate(t.createdAt)}
+                            </CTableDataCell>
                           </CTableRow>
                         ))}
                       </CTableBody>
@@ -705,7 +940,8 @@ const UserDetail = () => {
                       <div className="d-flex gap-3 mb-3">
                         <div className="text-muted small">
                           Total payments: <strong>{user._count?.paymentsSent}</strong>
-                          {user.paymentsSent.length < user._count?.paymentsSent && ' (showing latest 20)'}
+                          {user.paymentsSent.length < user._count?.paymentsSent &&
+                            ' (showing latest 20)'}
                         </div>
                       </div>
                       <CTable small hover responsive>
@@ -725,7 +961,9 @@ const UserDetail = () => {
                         <CTableBody>
                           {user.paymentsSent.map((p, idx) => (
                             <CTableRow key={p.id}>
-                              <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {idx + 1}
+                              </CTableDataCell>
                               <CTableDataCell className="small fw-semibold">
                                 {p.trip?.id ? (
                                   <span
@@ -736,18 +974,36 @@ const UserDetail = () => {
                                   >
                                     {p.trip.title || p.trip.id}
                                   </span>
-                                ) : '-'}
+                                ) : (
+                                  '-'
+                                )}
                               </CTableDataCell>
-                              <CTableDataCell className="small">{fmt(p.amountMinor)}</CTableDataCell>
-                              <CTableDataCell className="small text-muted">{fmt(p.platformFeeMinor)}</CTableDataCell>
-                              <CTableDataCell className="small fw-semibold">{fmt(p.totalAmountMinor)}</CTableDataCell>
-                              <CTableDataCell className="small">{p.paymentMethod || '-'}</CTableDataCell>
-                              <CTableDataCell>
-                                <CBadge color={PAYMENT_STATUS_COLOR[p.status] || 'secondary'}>{p.status}</CBadge>
+                              <CTableDataCell className="small">
+                                {fmt(p.amountMinor)}
                               </CTableDataCell>
-                              <CTableDataCell className="small text-muted">{fmtDate(p.createdAt)}</CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {fmt(p.platformFeeMinor)}
+                              </CTableDataCell>
+                              <CTableDataCell className="small fw-semibold">
+                                {fmt(p.totalAmountMinor)}
+                              </CTableDataCell>
+                              <CTableDataCell className="small">
+                                {p.paymentMethod || '-'}
+                              </CTableDataCell>
                               <CTableDataCell>
-                                <CButton size="sm" color="outline-primary" onClick={() => navigate(`/payments/${p.id}`)}>
+                                <CBadge color={PAYMENT_STATUS_COLOR[p.status] || 'secondary'}>
+                                  {p.status}
+                                </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {fmtDate(p.createdAt)}
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                <CButton
+                                  size="sm"
+                                  color="outline-primary"
+                                  onClick={() => navigate(`/payments/${p.id}`)}
+                                >
                                   <CIcon icon={cilZoomIn} size="sm" />
                                 </CButton>
                               </CTableDataCell>
@@ -767,7 +1023,8 @@ const UserDetail = () => {
                     <>
                       <div className="text-muted small mb-3">
                         Total bookings: <strong>{user._count?.bookingParticipants}</strong>
-                        {user.bookingParticipants.length < user._count?.bookingParticipants && ' (showing latest 20)'}
+                        {user.bookingParticipants.length < user._count?.bookingParticipants &&
+                          ' (showing latest 20)'}
                       </div>
                       <CTable small hover responsive>
                         <CTableHead color="light">
@@ -783,16 +1040,26 @@ const UserDetail = () => {
                         <CTableBody>
                           {user.bookingParticipants.map((b, idx) => (
                             <CTableRow key={b.id}>
-                              <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
-                              <CTableDataCell className="small fw-semibold">{b.trip?.title || '-'}</CTableDataCell>
-                              <CTableDataCell>
-                                <CBadge color={TRIP_STATUS_COLOR[b.trip?.status] || 'secondary'}>{b.trip?.status || '-'}</CBadge>
+                              <CTableDataCell className="small text-muted">
+                                {idx + 1}
+                              </CTableDataCell>
+                              <CTableDataCell className="small fw-semibold">
+                                {b.trip?.title || '-'}
                               </CTableDataCell>
                               <CTableDataCell>
-                                <CBadge color={BOOKING_STATUS_COLOR[b.status] || 'secondary'}>{b.status || '-'}</CBadge>
+                                <CBadge color={TRIP_STATUS_COLOR[b.trip?.status] || 'secondary'}>
+                                  {b.trip?.status || '-'}
+                                </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                <CBadge color={BOOKING_STATUS_COLOR[b.status] || 'secondary'}>
+                                  {b.status || '-'}
+                                </CBadge>
                               </CTableDataCell>
                               <CTableDataCell className="small">{b.role || '-'}</CTableDataCell>
-                              <CTableDataCell className="small text-muted">{fmtDate(b.createdAt)}</CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {fmtDate(b.createdAt)}
+                              </CTableDataCell>
                             </CTableRow>
                           ))}
                         </CTableBody>
@@ -824,18 +1091,29 @@ const UserDetail = () => {
                               <div className="d-flex align-items-center gap-2">
                                 <div
                                   style={{
-                                    width: 30, height: 30, borderRadius: '50%',
-                                    background: '#321fdb', color: '#fff',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 12, fontWeight: 700, flexShrink: 0,
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: '50%',
+                                    background: '#321fdb',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    flexShrink: 0,
                                   }}
                                 >
                                   {(r.reviewer?.name || '?').charAt(0).toUpperCase()}
                                 </div>
-                                <span className="small fw-semibold">{r.reviewer?.name || 'Anonymous'}</span>
+                                <span className="small fw-semibold">
+                                  {r.reviewer?.name || 'Anonymous'}
+                                </span>
                               </div>
                               <div className="d-flex align-items-center gap-2">
-                                <CBadge color="warning" textColor="dark">★ {r.rating}</CBadge>
+                                <CBadge color="warning" textColor="dark">
+                                  ★ {r.rating}
+                                </CBadge>
                                 <span className="small text-muted">{fmtDate(r.createdAt)}</span>
                               </div>
                             </div>
@@ -854,8 +1132,10 @@ const UserDetail = () => {
                   {user.tripProviderAssignmentsAsProvider?.length > 0 ? (
                     <>
                       <div className="text-muted small mb-3">
-                        Total assignments: <strong>{user._count?.tripProviderAssignmentsAsProvider}</strong>
-                        {user.tripProviderAssignmentsAsProvider.length < user._count?.tripProviderAssignmentsAsProvider && ' (showing latest 30)'}
+                        Total assignments:{' '}
+                        <strong>{user._count?.tripProviderAssignmentsAsProvider}</strong>
+                        {user.tripProviderAssignmentsAsProvider.length <
+                          user._count?.tripProviderAssignmentsAsProvider && ' (showing latest 30)'}
                       </div>
                       <CTable small hover responsive>
                         <CTableHead color="light">
@@ -872,7 +1152,9 @@ const UserDetail = () => {
                         <CTableBody>
                           {user.tripProviderAssignmentsAsProvider.map((a, idx) => (
                             <CTableRow key={a.id}>
-                              <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {idx + 1}
+                              </CTableDataCell>
                               <CTableDataCell className="small fw-semibold">
                                 <span
                                   role="button"
@@ -888,16 +1170,22 @@ const UserDetail = () => {
                                 {fmtDate(a.startDate)} – {fmtDate(a.endDate)}
                               </CTableDataCell>
                               <CTableDataCell>
-                                <CBadge color={ASSIGNMENT_STATUS_COLOR[a.assignmentStatus] || 'secondary'}>
+                                <CBadge
+                                  color={ASSIGNMENT_STATUS_COLOR[a.assignmentStatus] || 'secondary'}
+                                >
                                   {a.assignmentStatus}
                                 </CBadge>
                               </CTableDataCell>
                               <CTableDataCell>
-                                <CBadge color={ASSIGNMENT_PAYMENT_COLOR[a.paymentStatus] || 'secondary'}>
+                                <CBadge
+                                  color={ASSIGNMENT_PAYMENT_COLOR[a.paymentStatus] || 'secondary'}
+                                >
                                   {a.paymentStatus}
                                 </CBadge>
                               </CTableDataCell>
-                              <CTableDataCell className="small">{fmt(a.agreedAmountMinor)}</CTableDataCell>
+                              <CTableDataCell className="small">
+                                {fmt(a.agreedAmountMinor)}
+                              </CTableDataCell>
                             </CTableRow>
                           ))}
                         </CTableBody>
@@ -932,7 +1220,9 @@ const UserDetail = () => {
                         <CTableBody>
                           {user.payouts.map((p, idx) => (
                             <CTableRow key={p.id}>
-                              <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {idx + 1}
+                              </CTableDataCell>
                               <CTableDataCell className="small fw-semibold">
                                 {p.trip?.id ? (
                                   <span
@@ -943,16 +1233,28 @@ const UserDetail = () => {
                                   >
                                     {p.trip.title || p.trip.id}
                                   </span>
-                                ) : '-'}
+                                ) : (
+                                  '-'
+                                )}
                               </CTableDataCell>
-                              <CTableDataCell className="small text-muted">{p.recipientRole?.replace(/_/g, ' ')}</CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {p.recipientRole?.replace(/_/g, ' ')}
+                              </CTableDataCell>
                               <CTableDataCell className="small">{fmt(p.amount)}</CTableDataCell>
-                              <CTableDataCell className="small fw-semibold">{fmt(p.netAmount)}</CTableDataCell>
-                              <CTableDataCell className="small">{p.dispatchMethod || '-'}</CTableDataCell>
-                              <CTableDataCell>
-                                <CBadge color={PAYOUT_STATUS_COLOR[p.status] || 'secondary'}>{p.status}</CBadge>
+                              <CTableDataCell className="small fw-semibold">
+                                {fmt(p.netAmount)}
                               </CTableDataCell>
-                              <CTableDataCell className="small text-muted">{fmtDate(p.createdAt)}</CTableDataCell>
+                              <CTableDataCell className="small">
+                                {p.dispatchMethod || '-'}
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                <CBadge color={PAYOUT_STATUS_COLOR[p.status] || 'secondary'}>
+                                  {p.status}
+                                </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {fmtDate(p.createdAt)}
+                              </CTableDataCell>
                             </CTableRow>
                           ))}
                         </CTableBody>
@@ -979,12 +1281,23 @@ const UserDetail = () => {
       </CRow>
 
       {/* Add SP Destination Modal */}
-      <CModal visible={spDestModal} onClose={() => { setSpDestModal(false); setSpDestError(null) }} size="lg">
+      <CModal
+        visible={spDestModal}
+        onClose={() => {
+          setSpDestModal(false)
+          setSpDestError(null)
+        }}
+        size="lg"
+      >
         <CModalHeader>
           <CModalTitle>Add Operating Destination</CModalTitle>
         </CModalHeader>
         <CModalBody>
-          {spDestError && <CAlert color="danger" className="py-2 small mb-3">{spDestError}</CAlert>}
+          {spDestError && (
+            <CAlert color="danger" className="py-2 small mb-3">
+              {spDestError}
+            </CAlert>
+          )}
           <div className="mb-3">
             <label className="form-label small fw-semibold">Search Destination</label>
             <CFormInput
@@ -1005,10 +1318,17 @@ const UserDetail = () => {
                   key={d.id}
                   className="px-3 py-2 border-bottom small d-flex justify-content-between align-items-center"
                   style={{ cursor: 'pointer' }}
-                  onClick={() => { setSpDestSelected(d.id); setSpDestSearch(d.name); setSpHotspotSelected('') }}
+                  onClick={() => {
+                    setSpDestSelected(d.id)
+                    setSpDestSearch(d.name)
+                    setSpHotspotSelected('')
+                  }}
                 >
                   <span className="fw-semibold">{d.name}</span>
-                  <span className="text-muted">{d.country}{d.region ? ` - ${d.region}` : ''}</span>
+                  <span className="text-muted">
+                    {d.country}
+                    {d.region ? ` - ${d.region}` : ''}
+                  </span>
                 </div>
               ))}
             </div>
@@ -1016,8 +1336,18 @@ const UserDetail = () => {
           {spDestSelected && (
             <div className="mb-3">
               <div className="d-flex align-items-center gap-2 mb-2">
-                <CBadge color="primary" className="py-1 px-2">{spDestSearch}</CBadge>
-                <CButton size="sm" color="outline-secondary" onClick={() => { setSpDestSelected(''); setSpDestSearch(''); setSpHotspotSelected('') }}>
+                <CBadge color="primary" className="py-1 px-2">
+                  {spDestSearch}
+                </CBadge>
+                <CButton
+                  size="sm"
+                  color="outline-secondary"
+                  onClick={() => {
+                    setSpDestSelected('')
+                    setSpDestSearch('')
+                    setSpHotspotSelected('')
+                  }}
+                >
                   Change
                 </CButton>
               </div>
@@ -1027,10 +1357,16 @@ const UserDetail = () => {
               {destHotspots.length === 0 ? (
                 <div className="small text-muted">No hotspots defined for this destination.</div>
               ) : (
-                <CFormSelect size="sm" value={spHotspotSelected} onChange={(e) => setSpHotspotSelected(e.target.value)}>
+                <CFormSelect
+                  size="sm"
+                  value={spHotspotSelected}
+                  onChange={(e) => setSpHotspotSelected(e.target.value)}
+                >
                   <option value="">- No specific hotspot -</option>
                   {destHotspots.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name} ({h.latitude?.toFixed(4)}, {h.longitude?.toFixed(4)})</option>
+                    <option key={h.id} value={h.id}>
+                      {h.name} ({h.latitude?.toFixed(4)}, {h.longitude?.toFixed(4)})
+                    </option>
                   ))}
                 </CFormSelect>
               )}
@@ -1038,11 +1374,24 @@ const UserDetail = () => {
           )}
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={() => { setSpDestModal(false); setSpDestError(null) }}>Cancel</CButton>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setSpDestModal(false)
+              setSpDestError(null)
+            }}
+          >
+            Cancel
+          </CButton>
           <CButton
             color="primary"
             disabled={!spDestSelected || addSPDestMut.isLoading}
-            onClick={() => addSPDestMut.mutate({ destinationId: spDestSelected, primaryHotspotId: spHotspotSelected || undefined })}
+            onClick={() =>
+              addSPDestMut.mutate({
+                destinationId: spDestSelected,
+                primaryHotspotId: spHotspotSelected || undefined,
+              })
+            }
           >
             {addSPDestMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
             Add Destination
