@@ -98,6 +98,7 @@ const TriggerList = () => {
                     {expandedId === idx && (
                       <CTableRow>
                         <CTableDataCell colSpan={7} style={{ background: 'var(--cui-tertiary-bg)' }}>
+                          <div className="small text-muted fw-semibold mt-1 mb-1">Trigger definition</div>
                           <div
                             className="small"
                             style={{
@@ -108,6 +109,20 @@ const TriggerList = () => {
                             }}
                           >
                             {t.definition}
+                          </div>
+                          <div className="small text-muted fw-semibold mt-2 mb-1">
+                            Function body ({t.functionName})
+                          </div>
+                          <div
+                            className="small"
+                            style={{
+                              fontFamily: 'monospace',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-all',
+                              padding: '8px 4px',
+                            }}
+                          >
+                            {t.functionDefinition}
                           </div>
                         </CTableDataCell>
                       </CTableRow>
