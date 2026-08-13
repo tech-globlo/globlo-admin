@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import {
   CButton,
   CCard,
@@ -20,15 +20,20 @@ import { useAuth } from '../../../context/AuthContext'
 import { API_BASE_URL } from '../../../lib/config'
 
 const Login = () => {
-  const { login, loading, error } = useAuth()
+  const { login, loading, error, isAuth } = useAuth()
   const navigate = useNavigate()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
 
+  // Already authenticated (e.g. token in localStorage from another tab, a
+  // stale bookmark, or direct URL entry) — bounce straight to the
+  // dashboard instead of showing the login form again.
+  if (isAuth) return <Navigate to="/dashboard" replace />
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     const ok = await login(identifier, password)
-    if (ok) navigate('/dashboard')
+    if (ok) navigate('/dashboard', { replace: true })
   }
 
   return (
