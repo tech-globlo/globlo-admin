@@ -53,6 +53,7 @@ import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 import { formatRupees } from '../../lib/constants'
 import AdminMediaGallery from '../../components/AdminMediaGallery'
+import AdminTableFooter from '../../components/AdminTableFooter'
 
 // -- Constants ----------------------------------------------------------------
 
@@ -398,6 +399,25 @@ const UserDetail = () => {
       const res = await api.get(`/api/admin/users/${id}`)
       return res.data.data
     },
+  })
+
+  // Trips tab — own paginated fetch (not the bootstrap's capped createdTrips
+  // sub-list) so all of a user's trips are reachable, not just the first 20.
+  const [tripsPage, setTripsPage] = useState(1)
+  const [tripsPageSize, setTripsPageSize] = useState(20)
+  const { data: tripsData, isLoading: tripsLoading } = useQuery({
+    queryKey: ['admin-user-trips', id, tripsPage, tripsPageSize],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        createdByUserId: id,
+        limit: tripsPageSize,
+        offset: (tripsPage - 1) * tripsPageSize,
+      })
+      const res = await api.get(`/api/admin/trips?${params}`)
+      return res.data.data
+    },
+    enabled: activeTab === 'trips',
+    placeholderData: (prev) => prev,
   })
 
   const addSPDestMut = useMutation({
@@ -888,46 +908,64 @@ const UserDetail = () => {
 
                 {/* Trips */}
                 <CTabPane visible={activeTab === 'trips'}>
-                  {user.createdTrips?.length > 0 ? (
-                    <CTable small hover responsive>
-                      <CTableHead color="light">
-                        <CTableRow>
-                          <CTableHeaderCell>#</CTableHeaderCell>
-                          <CTableHeaderCell>Title</CTableHeaderCell>
-                          <CTableHeaderCell>Status</CTableHeaderCell>
-                          <CTableHeaderCell>Participants</CTableHeaderCell>
-                          <CTableHeaderCell>Created</CTableHeaderCell>
-                        </CTableRow>
-                      </CTableHead>
-                      <CTableBody>
-                        {user.createdTrips.map((t, idx) => (
-                          <CTableRow key={t.id}>
-                            <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
-                            <CTableDataCell className="small fw-semibold">
-                              <span
-                                role="button"
-                                className="text-primary"
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => navigate(`/trips/${t.id}`)}
-                              >
-                                {t.title}
-                              </span>
-                            </CTableDataCell>
-                            <CTableDataCell>
-                              <CBadge color={TRIP_STATUS_COLOR[t.status] || 'secondary'}>
-                                {t.status}
-                              </CBadge>
-                            </CTableDataCell>
-                            <CTableDataCell className="small text-center">
-                              {t._count?.participants ?? '-'}
-                            </CTableDataCell>
-                            <CTableDataCell className="small text-muted">
-                              {fmtDate(t.createdAt)}
-                            </CTableDataCell>
+                  {tripsLoading && !tripsData ? (
+                    <div className="text-center py-4">
+                      <CSpinner size="sm" />
+                    </div>
+                  ) : tripsData?.trips?.length > 0 ? (
+                    <>
+                      <CTable small hover responsive>
+                        <CTableHead color="light">
+                          <CTableRow>
+                            <CTableHeaderCell>#</CTableHeaderCell>
+                            <CTableHeaderCell>Title</CTableHeaderCell>
+                            <CTableHeaderCell>Status</CTableHeaderCell>
+                            <CTableHeaderCell>Participants</CTableHeaderCell>
+                            <CTableHeaderCell>Created</CTableHeaderCell>
                           </CTableRow>
-                        ))}
-                      </CTableBody>
-                    </CTable>
+                        </CTableHead>
+                        <CTableBody>
+                          {tripsData.trips.map((t, idx) => (
+                            <CTableRow key={t.id}>
+                              <CTableDataCell className="small text-muted">
+                                {(tripsPage - 1) * tripsPageSize + idx + 1}
+                              </CTableDataCell>
+                              <CTableDataCell className="small fw-semibold">
+                                <span
+                                  role="button"
+                                  className="text-primary"
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => navigate(`/trips/${t.id}`)}
+                                >
+                                  {t.title}
+                                </span>
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                <CBadge color={TRIP_STATUS_COLOR[t.status] || 'secondary'}>
+                                  {t.status}
+                                </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-center">
+                                {t._count?.participants ?? '-'}
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {fmtDate(t.createdAt)}
+                              </CTableDataCell>
+                            </CTableRow>
+                          ))}
+                        </CTableBody>
+                      </CTable>
+                      <AdminTableFooter
+                        total={tripsData.total}
+                        page={tripsPage}
+                        pageSize={tripsPageSize}
+                        onPageChange={setTripsPage}
+                        onPageSizeChange={(size) => {
+                          setTripsPageSize(size)
+                          setTripsPage(1)
+                        }}
+                      />
+                    </>
                   ) : (
                     <EmptyState message="No trips created by this user." />
                   )}
