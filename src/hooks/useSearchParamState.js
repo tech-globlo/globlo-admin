@@ -2,60 +2,78 @@ import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 /**
- * Drop-in replacement for a single `useState` call that mirrors the value
- * into the URL's query string instead of local component state — so list
- * screens (search text, sort column/order, page, filters) survive
- * navigating away (e.g. to a detail page) and back, since the browser
- * restores the full URL including query params on back-navigation, while
- * plain `useState` gets wiped when React Router unmounts the route.
+ * Mirrors a set of local-state-like fields (search text, sort column/order,
+ * page, filters) into the URL's query string instead of component state —
+ * so list screens survive navigating away (e.g. to a detail page) and back,
+ * since the browser restores the full URL including query params on
+ * back-navigation, while plain `useState` gets wiped when React Router
+ * unmounts the route.
  *
- * Updates use `{ replace: true }` so every filter change doesn't pile up
- * its own browser-history entry — only real navigations do.
+ * IMPORTANT — always update multiple fields in ONE `setValues({...})` call
+ * when they change together (e.g. `setValues({ role, page: 1 })` on a
+ * filter change, not `setRole(role); setPage(1)` as two separate calls).
+ * react-router's `setSearchParams` functional updater is seeded from the
+ * CURRENT render's `searchParams`, not a "latest pending state" updater —
+ * calling it twice synchronously in one handler makes the second call
+ * silently overwrite the first (both `navigate()` from the same stale
+ * base). A single hook instance covering the whole schema, with a single
+ * `setValues` that merges all changes into one `setSearchParams` call,
+ * sidesteps that entirely instead of relying on cross-call chaining that
+ * react-router doesn't actually guarantee.
  *
- * @param {string} key - query param name
- * @param {*} defaultValue - value used when the param is absent; also the
- *   value that causes the param to be OMITTED from the URL when set (keeps
- *   URLs clean instead of always carrying every default explicitly)
- * @param {{ type?: 'string' | 'number' }} [options]
+ * @param {Record<string, { default: *, type?: 'string' | 'number' }>} schema
+ * @returns {[Record<string, *>, (updates: Record<string, *>) => void]}
  */
-export function useSearchParamState(key, defaultValue, { type = 'string' } = {}) {
+export function useSearchParamsState(schema) {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const raw = searchParams.get(key)
-
-  const value = useMemo(() => {
-    if (raw === null) return defaultValue
-    if (type === 'number') {
-      const n = parseInt(raw, 10)
-      return Number.isNaN(n) ? defaultValue : n
+  const values = useMemo(() => {
+    const result = {}
+    for (const key of Object.keys(schema)) {
+      const { default: defaultValue, type = 'string' } = schema[key]
+      const raw = searchParams.get(key)
+      if (raw === null) {
+        result[key] = defaultValue
+      } else if (type === 'number') {
+        const n = parseInt(raw, 10)
+        result[key] = Number.isNaN(n) ? defaultValue : n
+      } else {
+        result[key] = raw
+      }
     }
-    return raw
-  }, [raw, defaultValue, type])
+    return result
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
-  const setValue = useCallback(
-    (next) => {
+  const setValues = useCallback(
+    (updates) => {
       setSearchParams(
         (prev) => {
           const params = new URLSearchParams(prev)
-          const current = params.has(key)
-            ? type === 'number'
-              ? parseInt(params.get(key), 10)
-              : params.get(key)
-            : defaultValue
-          const resolved = typeof next === 'function' ? next(current) : next
+          for (const key of Object.keys(updates)) {
+            const fieldSchema = schema[key] || {}
+            const defaultValue = fieldSchema.default
+            const resolved = updates[key]
 
-          if (resolved === defaultValue || resolved === '' || resolved === undefined || resolved === null) {
-            params.delete(key)
-          } else {
-            params.set(key, String(resolved))
+            if (
+              resolved === defaultValue ||
+              resolved === '' ||
+              resolved === undefined ||
+              resolved === null
+            ) {
+              params.delete(key)
+            } else {
+              params.set(key, String(resolved))
+            }
           }
           return params
         },
         { replace: true },
       )
     },
-    [key, defaultValue, type, setSearchParams],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setSearchParams],
   )
 
-  return [value, setValue]
+  return [values, setValues]
 }
