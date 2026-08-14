@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParamState } from '../../hooks/useSearchParamState'
 import { useQuery } from '@tanstack/react-query'
 import {
   CCard,
@@ -59,14 +60,17 @@ const initials = (name) =>
 const UserList = () => {
   const navigate = useNavigate()
   const { admin } = useAuth()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [search, setSearch] = useState('')
-  const [role, setRole] = useState('')
-  const [accountStatus, setAccountStatus] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [page, setPage] = useSearchParamState('page', 1, { type: 'number' })
+  const [pageSize, setPageSize] = useSearchParamState('pageSize', 20, { type: 'number' })
+  const [search, setSearch] = useSearchParamState('search', '')
+  const [role, setRole] = useSearchParamState('role', '')
+  const [accountStatus, setAccountStatus] = useSearchParamState('accountStatus', '')
+  // Typing buffer only — not URL-synced itself, it initializes from the
+  // already-persisted `search` value below so it's still correct on
+  // remount, without needing to sync every keystroke to the URL.
+  const [searchInput, setSearchInput] = useState(search)
+  const [sortBy, setSortBy] = useSearchParamState('sortBy', 'createdAt')
+  const [sortOrder, setSortOrder] = useSearchParamState('sortOrder', 'desc')
 
   const offset = (page - 1) * pageSize
 

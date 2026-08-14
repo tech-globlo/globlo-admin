@@ -12,6 +12,7 @@ import CIcon from '@coreui/icons-react'
 import { cilZoomIn, cilSettings, cilBookmark } from '@coreui/icons'
 import SortableHeader from '../../components/SortableHeader'
 import AdminTableFooter from '../../components/AdminTableFooter'
+import { useSearchParamState } from '../../hooks/useSearchParamState'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 import { formatRupees } from '../../lib/constants'
@@ -40,14 +41,16 @@ const fetchTrips = async ({ limit, offset, search, status, featured, sortBy, sor
 const TripList = () => {
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [featuredFilter, setFeaturedFilter] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [page, setPage] = useSearchParamState('page', 1, { type: 'number' })
+  const [pageSize, setPageSize] = useSearchParamState('pageSize', 20, { type: 'number' })
+  const [search, setSearch] = useSearchParamState('search', '')
+  // Typing buffer only — not URL-synced itself, initializes from the
+  // already-persisted `search` value so it's still correct on remount.
+  const [searchInput, setSearchInput] = useState(search)
+  const [statusFilter, setStatusFilter] = useSearchParamState('status', '')
+  const [featuredFilter, setFeaturedFilter] = useSearchParamState('featured', '')
+  const [sortBy, setSortBy] = useSearchParamState('sortBy', 'createdAt')
+  const [sortOrder, setSortOrder] = useSearchParamState('sortOrder', 'desc')
   const [actionTrip, setActionTrip] = useState(null)
   const [newStatus, setNewStatus] = useState('')
   const [cancelReason, setCancelReason] = useState('')
