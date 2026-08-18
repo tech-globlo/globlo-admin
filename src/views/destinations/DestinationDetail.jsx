@@ -446,6 +446,9 @@ const DestinationDetail = () => {
     { key: 'info', label: 'Info' },
     { key: 'nature', label: 'Nature & Wildlife' },
     { key: 'access', label: 'Access & Logistics' },
+    // Only a minority of destinations have gate data sourced — hide the tab
+    // entirely rather than show an always-empty one for the rest.
+    ...(dest.gates?.length > 0 ? [{ key: 'gates', label: `Gates (${dest.gates.length})` }] : []),
     { key: 'gallery', label: `Gallery (${dest.photoGallery?.length ?? 0})` },
     { key: 'trips', label: `Trips (${dest._count?.trips ?? 0})` },
     { key: 'reviews', label: `Reviews (${dest._count?.reviews ?? 0})` },
@@ -532,6 +535,7 @@ const DestinationDetail = () => {
               { label: 'Trips', value: dest._count?.trips, color: 'primary' },
               { label: 'Reviews', value: dest._count?.reviews, color: 'warning' },
               { label: 'Hotspots', value: dest._count?.hotspots, color: 'info' },
+              { label: 'Gates', value: dest._count?.gates, color: 'info' },
               { label: 'Sightings', value: dest._count?.sightings, color: 'success' },
               { label: 'Wishlisted', value: dest._count?.wishlistedBy, color: 'secondary' },
             ].map(({ label, value, color }) => (
@@ -998,6 +1002,56 @@ const DestinationDetail = () => {
                 </CRow>
               )}
             </CTabPane>
+
+            {/* Gates — read-only for now; gate CRUD is a later phase (see
+                project_admin_gates_scope memory). Only rendered when the
+                destination actually has sourced gate data (TABS omits the
+                tab entirely otherwise). */}
+            {dest.gates?.length > 0 && (
+              <CTabPane visible={activeTab === 'gates'}>
+                <CTable small hover responsive>
+                  <CTableHead color="light">
+                    <CTableRow>
+                      <CTableHeaderCell>Gate</CTableHeaderCell>
+                      <CTableHeaderCell>Zone</CTableHeaderCell>
+                      <CTableHeaderCell>District / Town</CTableHeaderCell>
+                      <CTableHeaderCell>Vehicle</CTableHeaderCell>
+                      <CTableHeaderCell>Rating</CTableHeaderCell>
+                      <CTableHeaderCell>Popularity Rank</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {dest.gates.map((gate) => (
+                      <CTableRow key={gate.id}>
+                        <CTableDataCell>
+                          <div className="small fw-semibold">{gate.gateName}</div>
+                          {gate.isPrimary === false && (
+                            <CBadge color="secondary" className="mt-1">
+                              Add-on
+                            </CBadge>
+                          )}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.zoneType || '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {[gate.district, gate.nearbyTown].filter(Boolean).join(' · ') || '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.vehicleType || '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.googleRating != null ? gate.googleRating.toFixed(1) : '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.popularityRank ?? '-'}
+                        </CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              </CTabPane>
+            )}
 
             <CTabPane visible={activeTab === 'gallery'}>
               {/* Toolbar */}

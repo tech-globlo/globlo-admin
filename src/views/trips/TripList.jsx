@@ -12,6 +12,7 @@ import CIcon from '@coreui/icons-react'
 import { cilZoomIn, cilSettings, cilBookmark } from '@coreui/icons'
 import SortableHeader from '../../components/SortableHeader'
 import AdminTableFooter from '../../components/AdminTableFooter'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 import { formatRupees } from '../../lib/constants'
@@ -40,14 +41,27 @@ const fetchTrips = async ({ limit, offset, search, status, featured, sortBy, sor
 const TripList = () => {
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [featuredFilter, setFeaturedFilter] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    search: { default: '' },
+    status: { default: '' },
+    featured: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const {
+    page,
+    pageSize,
+    search,
+    status: statusFilter,
+    featured: featuredFilter,
+    sortBy,
+    sortOrder,
+  } = filters
+  // Typing buffer only — not URL-synced itself, initializes from the
+  // already-persisted `search` value so it's still correct on remount.
+  const [searchInput, setSearchInput] = useState(search)
   const [actionTrip, setActionTrip] = useState(null)
   const [newStatus, setNewStatus] = useState('')
   const [cancelReason, setCancelReason] = useState('')
@@ -55,7 +69,7 @@ const TripList = () => {
 
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => setFilters({ sortBy: field, sortOrder: order, page: 1 })
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-trips', { page, pageSize, search, statusFilter, featuredFilter, sortBy, sortOrder }],
@@ -76,8 +90,7 @@ const TripList = () => {
 
   const handleSearch = (e) => {
     e.preventDefault()
-    setSearch(searchInput)
-    setPage(1)
+    setFilters({ search: searchInput, page: 1 })
   }
 
   const handleStatusUpdate = () => {
@@ -109,7 +122,7 @@ const TripList = () => {
               </form>
             </CCol>
             <CCol md={3}>
-              <CFormSelect size="sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}>
+              <CFormSelect size="sm" value={statusFilter} onChange={(e) => setFilters({ status: e.target.value, page: 1 })}>
                 <option value="">All statuses</option>
                 {['DRAFT', 'ACTIVE', 'RUNNING', 'CANCELLED', 'COMPLETED', 'ARCHIVED'].map((s) => (
                   <option key={s} value={s}>{s}</option>
@@ -117,7 +130,7 @@ const TripList = () => {
               </CFormSelect>
             </CCol>
             <CCol md={3}>
-              <CFormSelect size="sm" value={featuredFilter} onChange={(e) => { setFeaturedFilter(e.target.value); setPage(1) }}>
+              <CFormSelect size="sm" value={featuredFilter} onChange={(e) => setFilters({ featured: e.target.value, page: 1 })}>
                 <option value="">Featured: all</option>
                 <option value="true">Featured only</option>
                 <option value="false">Not featured</option>
@@ -196,8 +209,8 @@ const TripList = () => {
                 total={data.total}
                 page={page}
                 pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+                onPageChange={(p) => setFilters({ page: p })}
+                onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
               />
             </>
           )}

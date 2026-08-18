@@ -945,6 +945,7 @@ const TripDetail = () => {
                   <CTableHead color="light">
                     <CTableRow>
                       <CTableHeaderCell>#</CTableHeaderCell>
+                      <CTableHeaderCell>Gate</CTableHeaderCell>
                       <CTableHeaderCell>Provider</CTableHeaderCell>
                       <CTableHeaderCell>Service</CTableHeaderCell>
                       <CTableHeaderCell>Dates</CTableHeaderCell>
@@ -955,68 +956,95 @@ const TripDetail = () => {
                     </CTableRow>
                   </CTableHead>
                   <CTableBody>
-                    {trip.providerAssignments.map((a, i) => (
-                      <CTableRow key={a.id}>
-                        <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
-                        <CTableDataCell>
-                          <div
-                            className="small fw-semibold"
-                            style={{ color: 'var(--cui-primary)', cursor: 'pointer' }}
-                            onClick={() =>
-                              a.providerUser?.id && navigate(`/users/${a.providerUser.id}`)
-                            }
-                          >
-                            {a.providerUser?.name || '-'}
-                          </div>
-                          <div className="small text-muted">{a.providerUser?.email}</div>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <div className="small fw-semibold">
-                            {a.serviceDetails?.title || a.serviceType}
-                          </div>
-                          {a.serviceDetails?.serviceType && (
-                            <div className="small text-muted">{a.serviceDetails.serviceType}</div>
-                          )}
-                        </CTableDataCell>
-                        <CTableDataCell className="small text-muted">
-                          <div>{fmtDate(a.startDate)}</div>
-                          <div>{fmtDate(a.endDate)}</div>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CBadge
-                            color={ASSIGNMENT_STATUS_COLOR[a.assignmentStatus] || 'secondary'}
-                          >
-                            {a.assignmentStatus}
-                          </CBadge>
-                        </CTableDataCell>
-                        <CTableDataCell className="small">
-                          {fmtPrice(a.agreedAmountMinor ?? a.totalCostMinor)}
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CBadge
-                            color={
-                              a.paymentStatus === 'PAID'
-                                ? 'success'
-                                : a.paymentStatus === 'NONE'
-                                  ? 'secondary'
-                                  : 'warning'
-                            }
-                          >
-                            {a.paymentStatus}
-                          </CBadge>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CButton
-                            size="sm"
-                            color="outline-primary"
-                            title="View details"
-                            onClick={() => setViewProvider(a)}
-                          >
-                            <CIcon icon={cilZoomIn} size="sm" />
-                          </CButton>
-                        </CTableDataCell>
-                      </CTableRow>
-                    ))}
+                    {/* Sorted by gate so assignments visually cluster per gate
+                        visit — two SPs on the same service/status but
+                        different gates are each a distinct, intentional
+                        assignment, not a duplicate (see project_admin_gates_scope
+                        memory: don't treat these as redundant). */}
+                    {[...trip.providerAssignments]
+                      .sort((a, b) => {
+                        const gateA = a.tripDestinationGate?.destinationGate?.gateName || ''
+                        const gateB = b.tripDestinationGate?.destinationGate?.gateName || ''
+                        return gateA.localeCompare(gateB)
+                      })
+                      .map((a, i) => (
+                        <CTableRow key={a.id}>
+                          <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
+                          <CTableDataCell>
+                            {a.tripDestinationGate?.destinationGate?.gateName ? (
+                              <>
+                                <div className="small fw-semibold">
+                                  {a.tripDestinationGate.destinationGate.gateName}
+                                </div>
+                                {a.tripDestinationGate.destinationGate.zoneType && (
+                                  <div className="small text-muted">
+                                    {a.tripDestinationGate.destinationGate.zoneType}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="small text-muted">—</span>
+                            )}
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <div
+                              className="small fw-semibold"
+                              style={{ color: 'var(--cui-primary)', cursor: 'pointer' }}
+                              onClick={() =>
+                                a.providerUser?.id && navigate(`/users/${a.providerUser.id}`)
+                              }
+                            >
+                              {a.providerUser?.name || '-'}
+                            </div>
+                            <div className="small text-muted">{a.providerUser?.email}</div>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <div className="small fw-semibold">
+                              {a.serviceDetails?.title || a.serviceType}
+                            </div>
+                            {a.serviceDetails?.serviceType && (
+                              <div className="small text-muted">{a.serviceDetails.serviceType}</div>
+                            )}
+                          </CTableDataCell>
+                          <CTableDataCell className="small text-muted">
+                            <div>{fmtDate(a.startDate)}</div>
+                            <div>{fmtDate(a.endDate)}</div>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CBadge
+                              color={ASSIGNMENT_STATUS_COLOR[a.assignmentStatus] || 'secondary'}
+                            >
+                              {a.assignmentStatus}
+                            </CBadge>
+                          </CTableDataCell>
+                          <CTableDataCell className="small">
+                            {fmtPrice(a.agreedAmountMinor ?? a.totalCostMinor)}
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CBadge
+                              color={
+                                a.paymentStatus === 'PAID'
+                                  ? 'success'
+                                  : a.paymentStatus === 'NONE'
+                                    ? 'secondary'
+                                    : 'warning'
+                              }
+                            >
+                              {a.paymentStatus}
+                            </CBadge>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CButton
+                              size="sm"
+                              color="outline-primary"
+                              title="View details"
+                              onClick={() => setViewProvider(a)}
+                            >
+                              <CIcon icon={cilZoomIn} size="sm" />
+                            </CButton>
+                          </CTableDataCell>
+                        </CTableRow>
+                      ))}
                   </CTableBody>
                 </CTable>
               ) : (

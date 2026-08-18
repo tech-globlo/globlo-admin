@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery } from '@tanstack/react-query'
 import {
   CCard,
@@ -59,21 +60,25 @@ const initials = (name) =>
 const UserList = () => {
   const navigate = useNavigate()
   const { admin } = useAuth()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [search, setSearch] = useState('')
-  const [role, setRole] = useState('')
-  const [accountStatus, setAccountStatus] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    search: { default: '' },
+    role: { default: '' },
+    accountStatus: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, search, role, accountStatus, sortBy, sortOrder } = filters
+  // Typing buffer only — not URL-synced itself, it initializes from the
+  // already-persisted `search` value below so it's still correct on
+  // remount, without needing to sync every keystroke to the URL.
+  const [searchInput, setSearchInput] = useState(search)
 
   const offset = (page - 1) * pageSize
 
   const handleSort = (field, order) => {
-    setSortBy(field)
-    setSortOrder(order)
-    setPage(1)
+    setFilters({ sortBy: field, sortOrder: order, page: 1 })
   }
 
   const { data, isLoading, isError } = useQuery({
@@ -84,8 +89,7 @@ const UserList = () => {
 
   const handleSearch = (e) => {
     e.preventDefault()
-    setSearch(searchInput)
-    setPage(1)
+    setFilters({ search: searchInput, page: 1 })
   }
 
   return (
@@ -111,7 +115,7 @@ const UserList = () => {
             <CFormSelect
               size="sm"
               value={role}
-              onChange={(e) => { setRole(e.target.value); setPage(1) }}
+              onChange={(e) => setFilters({ role: e.target.value, page: 1 })}
             >
               <option value="">All roles</option>
               <option value="PHOTOGRAPHER">Photographer</option>
@@ -123,7 +127,7 @@ const UserList = () => {
             <CFormSelect
               size="sm"
               value={accountStatus}
-              onChange={(e) => { setAccountStatus(e.target.value); setPage(1) }}
+              onChange={(e) => setFilters({ accountStatus: e.target.value, page: 1 })}
             >
               <option value="">All statuses</option>
               <option value="ACTIVE">Active</option>
@@ -221,8 +225,8 @@ const UserList = () => {
               total={data.total}
               page={page}
               pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+              onPageChange={(p) => setFilters({ page: p })}
+              onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
             />
           </>
         )}
