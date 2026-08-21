@@ -42,6 +42,7 @@ import {
 } from '@coreui/icons'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
+import { GATE_COST_UNIT_LABELS, GATE_VEHICLE_CATEGORY_LABELS } from '../../lib/constants'
 
 //
 const fmtPrice = (minor) => {
@@ -80,6 +81,13 @@ const TRIP_STATUS_COLOR = {
   DRAFT: 'secondary',
   COMPLETED: 'dark',
   CANCELLED: 'danger',
+}
+
+const DESTINATION_STATUS_COLOR = {
+  DRAFT: 'secondary',
+  PUBLISHED: 'success',
+  HIDDEN: 'warning',
+  ARCHIVED: 'dark',
 }
 
 const InfoRow = ({ label, value }) => (
@@ -193,6 +201,7 @@ const DestinationDetail = () => {
         latitude: dest.latitude ?? '',
         longitude: dest.longitude ?? '',
         isPopular: dest.isPopular || false,
+        status: dest.status || 'DRAFT',
       },
       nature: {
         photographyLevel: parsePhotographyFriendly(dest.photographyFriendly).level,
@@ -253,6 +262,7 @@ const DestinationDetail = () => {
         latitude: dest.latitude ?? '',
         longitude: dest.longitude ?? '',
         isPopular: dest.isPopular || false,
+        status: dest.status || 'DRAFT',
       },
       nature: {
         photographyLevel: parsePhotographyFriendly(dest.photographyFriendly).level,
@@ -292,6 +302,7 @@ const DestinationDetail = () => {
         latitude: f.latitude !== '' ? parseFloat(f.latitude) : undefined,
         longitude: f.longitude !== '' ? parseFloat(f.longitude) : undefined,
         isPopular: f.isPopular,
+        status: f.status,
       }
     } else if (tab === 'nature') {
       payload = {
@@ -510,6 +521,9 @@ const DestinationDetail = () => {
                 {[dest.country, dest.state, dest.region].filter(Boolean).join(' - ')}
               </div>
               <div className="d-flex flex-wrap gap-2">
+                <CBadge color={DESTINATION_STATUS_COLOR[dest.status] || 'secondary'}>
+                  {dest.status || 'DRAFT'}
+                </CBadge>
                 {dest.isPopular && <CBadge color="success">Popular</CBadge>}
                 <CBadge color="light" textColor="dark">
                   {parsePhotographyFriendly(dest.photographyFriendly).level} Photography
@@ -596,6 +610,14 @@ const DestinationDetail = () => {
                     <CListGroup flush>
                       <InfoRow label="ID" value={<code className="small">{dest.id}</code>} />
                       <InfoRow label="Name" value={dest.name} />
+                      <InfoRow
+                        label="Status"
+                        value={
+                          <CBadge color={DESTINATION_STATUS_COLOR[dest.status] || 'secondary'}>
+                            {dest.status || 'DRAFT'}
+                          </CBadge>
+                        }
+                      />
                       <InfoRow label="Country" value={dest.country} />
                       <InfoRow label="State" value={dest.state} />
                       <InfoRow label="Region" value={dest.region} />
@@ -657,6 +679,20 @@ const DestinationDetail = () => {
                         value={f('info').name}
                         onChange={(e) => setField('info', 'name', e.target.value)}
                       />
+                    </EditRow>
+                  </CCol>
+                  <CCol md={3}>
+                    <EditRow label="Status">
+                      <CFormSelect
+                        size="sm"
+                        value={f('info').status}
+                        onChange={(e) => setField('info', 'status', e.target.value)}
+                      >
+                        <option value="DRAFT">Draft</option>
+                        <option value="PUBLISHED">Published</option>
+                        <option value="HIDDEN">Hidden</option>
+                        <option value="ARCHIVED">Archived</option>
+                      </CFormSelect>
                     </EditRow>
                   </CCol>
                   <CCol md={3}>
@@ -1016,6 +1052,10 @@ const DestinationDetail = () => {
                       <CTableHeaderCell>Zone</CTableHeaderCell>
                       <CTableHeaderCell>District / Town</CTableHeaderCell>
                       <CTableHeaderCell>Vehicle</CTableHeaderCell>
+                      <CTableHeaderCell>Capacity</CTableHeaderCell>
+                      <CTableHeaderCell>Cost Unit</CTableHeaderCell>
+                      <CTableHeaderCell>Weekday Rate</CTableHeaderCell>
+                      <CTableHeaderCell>Weekend Rate</CTableHeaderCell>
                       <CTableHeaderCell>Rating</CTableHeaderCell>
                       <CTableHeaderCell>Popularity Rank</CTableHeaderCell>
                     </CTableRow>
@@ -1038,7 +1078,28 @@ const DestinationDetail = () => {
                           {[gate.district, gate.nearbyTown].filter(Boolean).join(' · ') || '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
-                          {gate.vehicleType || '-'}
+                          {(gate.vehicleCategory &&
+                            GATE_VEHICLE_CATEGORY_LABELS[gate.vehicleCategory]) ||
+                            gate.vehicleType ||
+                            '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.vehicleMaxCapacity != null
+                            ? `${gate.vehicleMaxCapacity} seats`
+                            : '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {(gate.costUnit && GATE_COST_UNIT_LABELS[gate.costUnit]) || '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.weekdayIndianMinMinor != null
+                            ? fmtPrice(gate.weekdayIndianMinMinor)
+                            : '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.weekendIndianMinMinor != null
+                            ? fmtPrice(gate.weekendIndianMinMinor)
+                            : '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
                           {gate.googleRating != null ? gate.googleRating.toFixed(1) : '-'}

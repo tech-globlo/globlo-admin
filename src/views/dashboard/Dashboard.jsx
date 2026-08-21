@@ -1,14 +1,7 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  CCard,
-  CCardBody,
-  CCol,
-  CRow,
-  CSpinner,
-  CAlert,
-  CBadge,
-} from '@coreui/react'
+import { useNavigate } from 'react-router-dom'
+import { CCard, CCardBody, CCol, CRow, CSpinner, CAlert, CBadge } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
   cilPeople,
@@ -20,6 +13,7 @@ import {
   cilWarning,
   cilBan,
   cilCheckCircle,
+  cilExternalLink,
 } from '@coreui/icons'
 import api from '../../lib/api'
 
@@ -55,16 +49,29 @@ const KpiCard = ({ icon, color, title, value, sub, subColor = 'text-muted' }) =>
   </CCard>
 )
 
-const QueueBadge = ({ label, count, color }) => (
+const QueueBadge = ({ label, count, color, onClick }) => (
   <div className="d-flex justify-content-between align-items-center py-2 border-bottom">
     <span className="small">{label}</span>
-    <CBadge color={count > 0 ? color : 'secondary'} shape="rounded-pill">
-      {count}
-    </CBadge>
+    <div className="d-flex align-items-center gap-2">
+      <CBadge color={count > 0 ? color : 'secondary'} shape="rounded-pill">
+        {count}
+      </CBadge>
+      {onClick && (
+        <CIcon
+          icon={cilExternalLink}
+          role="button"
+          size="sm"
+          className="text-muted"
+          style={{ cursor: 'pointer' }}
+          onClick={onClick}
+        />
+      )}
+    </div>
   </div>
 )
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: fetchStats,
@@ -80,7 +87,11 @@ const Dashboard = () => {
   }
 
   if (isError) {
-    return <CAlert color="danger">{error?.response?.data?.message || 'Failed to load dashboard stats'}</CAlert>
+    return (
+      <CAlert color="danger">
+        {error?.response?.data?.message || 'Failed to load dashboard stats'}
+      </CAlert>
+    )
   }
 
   const { users, trips, finance, queue } = data
@@ -133,40 +144,94 @@ const Dashboard = () => {
 
       {/* Row 2 - Finance & Queue */}
       <CRow>
-        <CCol md={6} xl={4}>
+        <CCol md={6} xl={3}>
           <CCard className="mb-4 border-0 shadow-sm">
             <CCardBody>
               <div className="d-flex align-items-center mb-3">
                 <CIcon icon={cilWallet} className="me-2 text-warning" />
                 <strong>Payouts</strong>
               </div>
-              <QueueBadge label="Pending / Scheduled" count={finance.pendingPayouts} color="warning" />
-              <QueueBadge label="On Hold" count={finance.onHoldPayouts} color="danger" />
+              <QueueBadge
+                label="Pending / Scheduled"
+                count={finance.pendingPayouts}
+                color="warning"
+                onClick={() => navigate('/payouts')}
+              />
+              <QueueBadge
+                label="On Hold"
+                count={finance.onHoldPayouts}
+                color="danger"
+                onClick={() => navigate('/payouts')}
+              />
+              <QueueBadge
+                label="Payout methods unverified"
+                count={queue.pendingPayoutMethodVerifications}
+                color="warning"
+                onClick={() => navigate('/payouts/methods')}
+              />
             </CCardBody>
           </CCard>
         </CCol>
 
-        <CCol md={6} xl={4}>
+        <CCol md={6} xl={3}>
           <CCard className="mb-4 border-0 shadow-sm">
             <CCardBody>
               <div className="d-flex align-items-center mb-3">
                 <CIcon icon={cilBadge} className="me-2 text-primary" />
                 <strong>Verification Queue</strong>
               </div>
-              <QueueBadge label="SP verifications pending" count={queue.pendingSpVerifications} color="primary" />
-              <QueueBadge label="Destination requests" count={queue.pendingDestRequests} color="info" />
+              <QueueBadge
+                label="SP verifications pending"
+                count={queue.pendingSpVerifications}
+                color="primary"
+                onClick={() => navigate('/verification/service-providers')}
+              />
+              <QueueBadge
+                label="Documents pending"
+                count={queue.pendingVerificationDocuments}
+                color="primary"
+                onClick={() => navigate('/verification/documents')}
+              />
+              <QueueBadge
+                label="Destination requests"
+                count={queue.pendingDestRequests}
+                color="info"
+                onClick={() => navigate('/destinations/requests')}
+              />
             </CCardBody>
           </CCard>
         </CCol>
 
-        <CCol md={6} xl={4}>
+        <CCol md={6} xl={3}>
           <CCard className="mb-4 border-0 shadow-sm">
             <CCardBody>
               <div className="d-flex align-items-center mb-3">
                 <CIcon icon={cilTask} className="me-2 text-danger" />
                 <strong>Open Cases</strong>
               </div>
-              <QueueBadge label="Active cases (open + in-progress)" count={queue.openCases} color="danger" />
+              <QueueBadge
+                label="Active cases (open + in-progress)"
+                count={queue.openCases}
+                color="danger"
+                onClick={() => navigate('/cases')}
+              />
+            </CCardBody>
+          </CCard>
+        </CCol>
+
+        <CCol md={6} xl={3}>
+          <CCard className="mb-4 border-0 shadow-sm">
+            <CCardBody>
+              <div className="d-flex align-items-center mb-3">
+                <CIcon icon={cilWallet} className="me-2 text-info" />
+                <strong>Refunds</strong>
+              </div>
+              <QueueBadge
+                label="Requested"
+                count={queue.pendingRefundRequests}
+                color="info"
+                onClick={() => navigate('/payments/refunds')}
+              />
             </CCardBody>
           </CCard>
         </CCol>
