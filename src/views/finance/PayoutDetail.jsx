@@ -2,12 +2,24 @@ import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  CCard, CCardBody, CCardHeader,
-  CCol, CRow,
-  CBadge, CButton, CSpinner, CAlert,
-  CListGroup, CListGroupItem,
-  CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
-  CFormSelect, CFormTextarea,
+  CCard,
+  CCardBody,
+  CCardHeader,
+  CCol,
+  CRow,
+  CBadge,
+  CButton,
+  CSpinner,
+  CAlert,
+  CListGroup,
+  CListGroupItem,
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CFormSelect,
+  CFormTextarea,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilArrowLeft, cilPencil, cilExternalLink } from '@coreui/icons'
@@ -29,7 +41,9 @@ const STATUS_COLOR = {
 
 const InfoRow = ({ label, value, mono, linkTo, onNavigate }) => (
   <CListGroupItem className="d-flex justify-content-between align-items-start py-2 px-0 border-start-0 border-end-0">
-    <span className="text-muted small" style={{ minWidth: 160 }}>{label}</span>
+    <span className="text-muted small" style={{ minWidth: 160 }}>
+      {label}
+    </span>
     <span
       className={`small fw-semibold text-end ${mono ? 'font-monospace' : ''}`}
       style={{ maxWidth: '60%', wordBreak: 'break-all' }}
@@ -45,7 +59,7 @@ const InfoRow = ({ label, value, mono, linkTo, onNavigate }) => (
           <CIcon icon={cilExternalLink} size="sm" className="ms-1" />
         </span>
       ) : (
-        value ?? '-'
+        (value ?? '-')
       )}
     </span>
   </CListGroupItem>
@@ -68,8 +82,13 @@ const PayoutDetail = () => {
   const [newStatus, setNewStatus] = useState('')
   const [holdReason, setHoldReason] = useState('')
   const [mutError, setMutError] = useState(null)
+  const [confirmVerifyMethod, setConfirmVerifyMethod] = useState(null) // payoutMethod being verified, or null
 
-  const { data: p, isLoading, isError } = useQuery({
+  const {
+    data: p,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['admin-payout', id],
     queryFn: async () => {
       const res = await api.get(`/api/admin/payouts/${id}`)
@@ -88,9 +107,26 @@ const PayoutDetail = () => {
     onError: (err) => setMutError(err.response?.data?.message || 'Failed to update'),
   })
 
+  // Verification is manual/DB-level for now — a future phase will check
+  // status against the gateway's bank API instead of an admin eyeballing
+  // the submitted account details.
+  const verifyMethodMut = useMutation({
+    mutationFn: (methodId) => api.post(`/api/admin/payout-methods/${methodId}/verify`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-payout', id] })
+      setConfirmVerifyMethod(null)
+    },
+  })
+
   const handleUpdate = () => {
-    if (!newStatus) { setMutError('Select a status'); return }
-    if (newStatus === 'ON_HOLD' && !holdReason.trim()) { setMutError('Hold reason is required'); return }
+    if (!newStatus) {
+      setMutError('Select a status')
+      return
+    }
+    if (newStatus === 'ON_HOLD' && !holdReason.trim()) {
+      setMutError('Hold reason is required')
+      return
+    }
     updateMut.mutate({ status: newStatus, holdReason })
   }
 
@@ -101,7 +137,12 @@ const PayoutDetail = () => {
     setEditModal(true)
   }
 
-  if (isLoading) return <div className="text-center py-5"><CSpinner color="primary" /></div>
+  if (isLoading)
+    return (
+      <div className="text-center py-5">
+        <CSpinner color="primary" />
+      </div>
+    )
   if (isError) return <CAlert color="danger">Failed to load payout.</CAlert>
   if (!p) return null
 
@@ -170,7 +211,9 @@ const PayoutDetail = () => {
         {/* Right column */}
         <CCol md={7}>
           <CCard className="mb-3">
-            <CCardHeader><strong>Recipient</strong></CCardHeader>
+            <CCardHeader>
+              <strong>Recipient</strong>
+            </CCardHeader>
             <CCardBody>
               <CListGroup flush>
                 <InfoRow
@@ -186,7 +229,49 @@ const PayoutDetail = () => {
           </CCard>
 
           <CCard className="mb-3">
-            <CCardHeader><strong>Trip</strong></CCardHeader>
+            <CCardHeader>
+              <strong>Payout Method</strong>
+            </CCardHeader>
+            <CCardBody>
+              {p.recipient?.payoutMethods?.length > 0 ? (
+                p.recipient.payoutMethods.map((m) => (
+                  <div
+                    key={m.id}
+                    className="d-flex justify-content-between align-items-start mb-3 pb-3 border-bottom"
+                  >
+                    <div>
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <span className="small fw-semibold">
+                          {m.label || (m.type === 'BANK' ? 'Bank Account' : 'UPI')}
+                        </span>
+                        {m.primary && <CBadge color="dark">Primary</CBadge>}
+                        <CBadge color={m.verified ? 'success' : 'warning'}>
+                          {m.verified ? 'Verified' : 'Unverified'}
+                        </CBadge>
+                      </div>
+                      <div className="small text-muted">
+                        {m.type === 'BANK'
+                          ? `${m.accountHolderName || ''} · ${m.accountNumberMasked || ''} · ${m.ifscCode || ''}`
+                          : m.upiId}
+                      </div>
+                    </div>
+                    {!m.verified && (
+                      <CButton color="success" size="sm" onClick={() => setConfirmVerifyMethod(m)}>
+                        Verify
+                      </CButton>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="small text-muted">No payout method on file for this recipient.</div>
+              )}
+            </CCardBody>
+          </CCard>
+
+          <CCard className="mb-3">
+            <CCardHeader>
+              <strong>Trip</strong>
+            </CCardHeader>
             <CCardBody>
               <CListGroup flush>
                 <InfoRow
@@ -202,7 +287,9 @@ const PayoutDetail = () => {
 
           {p.payment && (
             <CCard className="mb-3">
-              <CCardHeader><strong>Linked Payment</strong></CCardHeader>
+              <CCardHeader>
+                <strong>Linked Payment</strong>
+              </CCardHeader>
               <CCardBody>
                 <CListGroup flush>
                   <InfoRow
@@ -218,7 +305,9 @@ const PayoutDetail = () => {
           )}
 
           <CCard>
-            <CCardHeader><strong>Gateway References</strong></CCardHeader>
+            <CCardHeader>
+              <strong>Gateway References</strong>
+            </CCardHeader>
             <CCardBody>
               <CListGroup flush>
                 <InfoRow label="Razorpay Payout ID" value={p.razorpayPayoutId} mono />
@@ -237,8 +326,14 @@ const PayoutDetail = () => {
           <CModalTitle>Update Payout Status</CModalTitle>
         </CModalHeader>
         <CModalBody>
-          {mutError && <CAlert color="danger" className="mb-3">{mutError}</CAlert>}
-          <p className="small text-muted mb-1">{p.recipient?.name} - {p.trip?.title}</p>
+          {mutError && (
+            <CAlert color="danger" className="mb-3">
+              {mutError}
+            </CAlert>
+          )}
+          <p className="small text-muted mb-1">
+            {p.recipient?.name} - {p.trip?.title}
+          </p>
           <p className="small fw-semibold mb-3">{fmt(p.netAmount)}</p>
           <div className="mb-3">
             <label className="form-label small fw-semibold">Status</label>
@@ -260,10 +355,49 @@ const PayoutDetail = () => {
           )}
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={() => setEditModal(false)}>Cancel</CButton>
+          <CButton color="secondary" onClick={() => setEditModal(false)}>
+            Cancel
+          </CButton>
           <CButton color="primary" onClick={handleUpdate} disabled={updateMut.isLoading}>
             {updateMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
             Update
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Verify Payout Method */}
+      <CModal visible={!!confirmVerifyMethod} onClose={() => setConfirmVerifyMethod(null)}>
+        <CModalHeader>
+          <CModalTitle>Verify Payout Method</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p className="small text-muted">
+            Confirm the account details below match what {p.recipient?.name || 'the recipient'}{' '}
+            submitted, then mark this payout method as verified.
+          </p>
+          {confirmVerifyMethod && (
+            <div className="small fw-semibold">
+              {confirmVerifyMethod.type === 'BANK'
+                ? `${confirmVerifyMethod.accountHolderName || ''} · ${confirmVerifyMethod.accountNumberMasked || ''} · ${confirmVerifyMethod.ifscCode || ''}`
+                : confirmVerifyMethod.upiId}
+            </div>
+          )}
+          {verifyMethodMut.isError && (
+            <CAlert color="danger" className="small mt-3 mb-0">
+              {verifyMethodMut.error?.response?.data?.message || 'Failed to verify payout method.'}
+            </CAlert>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={() => setConfirmVerifyMethod(null)}>
+            Cancel
+          </CButton>
+          <CButton
+            color="success"
+            disabled={verifyMethodMut.isLoading}
+            onClick={() => verifyMethodMut.mutate(confirmVerifyMethod.id)}
+          >
+            {verifyMethodMut.isLoading ? <CSpinner size="sm" /> : 'Confirm Verify'}
           </CButton>
         </CModalFooter>
       </CModal>

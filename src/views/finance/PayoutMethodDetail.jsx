@@ -58,7 +58,7 @@ const PayoutMethodDetail = () => {
   })
 
   const verifyMutation = useMutation({
-    mutationFn: () => api.post(`/api/admin/payout-methods/${id}/verify`),
+    mutationFn: () => api.post(`/api/admin/payout-methods/${id}/verify`, {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-payout-method', id] })
       qc.invalidateQueries({ queryKey: ['admin-payout-methods'] })

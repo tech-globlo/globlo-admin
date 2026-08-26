@@ -129,6 +129,44 @@ const LocationValue = ({ locationText, locationObject }) => {
   )
 }
 
+const MilestoneTable = ({ milestones }) => (
+  <CTable small hover responsive className="mb-0">
+    <CTableHead color="light">
+      <CTableRow>
+        <CTableHeaderCell>#</CTableHeaderCell>
+        <CTableHeaderCell>Share</CTableHeaderCell>
+        <CTableHeaderCell>Amount</CTableHeaderCell>
+        <CTableHeaderCell>Trigger</CTableHeaderCell>
+        <CTableHeaderCell>Scheduled At</CTableHeaderCell>
+        <CTableHeaderCell>Status</CTableHeaderCell>
+      </CTableRow>
+    </CTableHead>
+    <CTableBody>
+      {milestones.map((m) => (
+        <CTableRow key={m.id}>
+          <CTableDataCell className="small text-muted">{m.position + 1}</CTableDataCell>
+          <CTableDataCell className="small">{Math.round(m.sharePct * 100)}%</CTableDataCell>
+          <CTableDataCell className="small fw-semibold">{fmtPrice(m.amountMinor)}</CTableDataCell>
+          <CTableDataCell className="small text-muted">
+            {m.triggerKind} ({m.triggerOffsetDays >= 0 ? '+' : ''}
+            {m.triggerOffsetDays}d)
+          </CTableDataCell>
+          <CTableDataCell className="small text-muted">{fmtDateTime(m.scheduledAt)}</CTableDataCell>
+          <CTableDataCell>
+            {m.cancelledAt ? (
+              <CBadge color="secondary">Cancelled</CBadge>
+            ) : m.payoutId ? (
+              <CBadge color="success">Dispatched</CBadge>
+            ) : (
+              <CBadge color="warning">Pending</CBadge>
+            )}
+          </CTableDataCell>
+        </CTableRow>
+      ))}
+    </CTableBody>
+  </CTable>
+)
+
 const TripDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -140,6 +178,11 @@ const TripDetail = () => {
   const [tabError, setTabError] = useState(null)
   const [tabSuccess, setTabSuccess] = useState(null)
   const [viewProvider, setViewProvider] = useState(null)
+  // { visible, type: 'TM' | 'SP', assignmentId? } — reason is required by
+  // the backend (adminScheduleSpPayout/adminScheduleTmPayout both take a
+  // mandatory `reason` string) since this bypasses the normal payment gate.
+  const [payoutReasonModal, setPayoutReasonModal] = useState({ visible: false, type: null, assignmentId: null })
+  const [payoutReason, setPayoutReason] = useState('')
 
   const {
     data: trip,
@@ -151,6 +194,27 @@ const TripDetail = () => {
       const res = await api.get(`/api/admin/trips/${id}`)
       return res.data.data
     },
+  })
+
+  // Dry-run preview shown inside the reason modal — computed by the backend
+  // from the exact same amount-derivation + buildMilestones logic the real
+  // schedule mutation uses, so what's shown is what will actually be created.
+  const {
+    data: payoutPreview,
+    isLoading: payoutPreviewLoading,
+    isError: payoutPreviewError,
+  } = useQuery({
+    queryKey: ['admin-trip', id, 'payout-preview', payoutReasonModal.type, payoutReasonModal.assignmentId],
+    queryFn: async () => {
+      const res =
+        payoutReasonModal.type === 'TM'
+          ? await api.get(`/api/admin/trips/${id}/preview-tm-payout`)
+          : await api.get(`/api/admin/trips/${id}/preview-sp-payout`, {
+              params: { assignmentId: payoutReasonModal.assignmentId },
+            })
+      return res.data.data
+    },
+    enabled: payoutReasonModal.visible && !!payoutReasonModal.type,
   })
 
   useEffect(() => {
@@ -186,6 +250,40 @@ const TripDetail = () => {
     },
     onError: (err) => setTabError(err.response?.data?.message || 'Save failed.'),
   })
+
+  const scheduleSpPayoutMut = useMutation({
+    mutationFn: ({ assignmentId, reason }) =>
+      api.post(`/api/admin/trips/${id}/schedule-sp-payout`, { assignmentId, reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-trip', id] })
+      setPayoutReasonModal({ visible: false, type: null, assignmentId: null })
+      setPayoutReason('')
+      setTabSuccess('SP payout scheduled.')
+      setTimeout(() => setTabSuccess(null), 3000)
+    },
+    onError: (err) => setTabError(err.response?.data?.message || 'Failed to schedule SP payout.'),
+  })
+
+  const scheduleTmPayoutMut = useMutation({
+    mutationFn: ({ reason }) => api.post(`/api/admin/trips/${id}/schedule-tm-payout`, { reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-trip', id] })
+      setPayoutReasonModal({ visible: false, type: null, assignmentId: null })
+      setPayoutReason('')
+      setTabSuccess('TM payout scheduled.')
+      setTimeout(() => setTabSuccess(null), 3000)
+    },
+    onError: (err) => setTabError(err.response?.data?.message || 'Failed to schedule TM payout.'),
+  })
+
+  const submitPayoutReason = () => {
+    if (!payoutReason.trim()) return
+    if (payoutReasonModal.type === 'TM') {
+      scheduleTmPayoutMut.mutate({ reason: payoutReason.trim() })
+    } else if (payoutReasonModal.type === 'SP') {
+      scheduleSpPayoutMut.mutate({ assignmentId: payoutReasonModal.assignmentId, reason: payoutReason.trim() })
+    }
+  }
 
   const handleSave = () => {
     setTabError(null)
@@ -262,6 +360,7 @@ const TripDetail = () => {
     { key: 'participants', label: `Participants (${trip._count?.participants ?? 0})` },
     { key: 'payments', label: `Payments (${trip._count?.payments ?? 0})` },
     { key: 'providers', label: `Providers (${trip._count?.providerAssignments ?? 0})` },
+    { key: 'payouts', label: `Payouts (${trip.payoutSchedules?.length ?? 0})` },
     { key: 'reviews', label: `Reviews (${trip._count?.reviews ?? 0})` },
     { key: 'gallery', label: 'Gallery' },
   ]
@@ -724,6 +823,40 @@ const TripDetail = () => {
                   )}
                 </CCol>
               </CRow>
+
+              {trip.destinationGates?.length > 0 && (
+                <CRow className="mt-2">
+                  <CCol md={12}>
+                    <div className="small fw-semibold text-muted mb-1">
+                      Gates ({trip.destinationGates.length})
+                    </div>
+                    <CTable small hover responsive>
+                      <CTableHead>
+                        <CTableRow>
+                          <CTableHeaderCell>Gate</CTableHeaderCell>
+                          <CTableHeaderCell>Zone Type</CTableHeaderCell>
+                          <CTableHeaderCell>Start Date</CTableHeaderCell>
+                          <CTableHeaderCell>End Date</CTableHeaderCell>
+                        </CTableRow>
+                      </CTableHead>
+                      <CTableBody>
+                        {trip.destinationGates.map((g) => (
+                          <CTableRow key={g.id}>
+                            <CTableDataCell className="small fw-semibold">
+                              {g.destinationGate?.gateName || '-'}
+                            </CTableDataCell>
+                            <CTableDataCell className="small text-muted">
+                              {g.destinationGate?.zoneType || '-'}
+                            </CTableDataCell>
+                            <CTableDataCell className="small">{fmtDate(g.startDate)}</CTableDataCell>
+                            <CTableDataCell className="small">{fmtDate(g.endDate)}</CTableDataCell>
+                          </CTableRow>
+                        ))}
+                      </CTableBody>
+                    </CTable>
+                  </CCol>
+                </CRow>
+              )}
             </CTabPane>
 
             {/* Itinerary */}
@@ -945,6 +1078,7 @@ const TripDetail = () => {
                   <CTableHead color="light">
                     <CTableRow>
                       <CTableHeaderCell>#</CTableHeaderCell>
+                      <CTableHeaderCell>Gate</CTableHeaderCell>
                       <CTableHeaderCell>Provider</CTableHeaderCell>
                       <CTableHeaderCell>Service</CTableHeaderCell>
                       <CTableHeaderCell>Dates</CTableHeaderCell>
@@ -955,73 +1089,193 @@ const TripDetail = () => {
                     </CTableRow>
                   </CTableHead>
                   <CTableBody>
-                    {trip.providerAssignments.map((a, i) => (
-                      <CTableRow key={a.id}>
-                        <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
-                        <CTableDataCell>
-                          <div
-                            className="small fw-semibold"
-                            style={{ color: 'var(--cui-primary)', cursor: 'pointer' }}
-                            onClick={() =>
-                              a.providerUser?.id && navigate(`/users/${a.providerUser.id}`)
-                            }
-                          >
-                            {a.providerUser?.name || '-'}
-                          </div>
-                          <div className="small text-muted">{a.providerUser?.email}</div>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <div className="small fw-semibold">
-                            {a.serviceDetails?.title || a.serviceType}
-                          </div>
-                          {a.serviceDetails?.serviceType && (
-                            <div className="small text-muted">{a.serviceDetails.serviceType}</div>
-                          )}
-                        </CTableDataCell>
-                        <CTableDataCell className="small text-muted">
-                          <div>{fmtDate(a.startDate)}</div>
-                          <div>{fmtDate(a.endDate)}</div>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CBadge
-                            color={ASSIGNMENT_STATUS_COLOR[a.assignmentStatus] || 'secondary'}
-                          >
-                            {a.assignmentStatus}
-                          </CBadge>
-                        </CTableDataCell>
-                        <CTableDataCell className="small">
-                          {fmtPrice(a.agreedAmountMinor ?? a.totalCostMinor)}
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CBadge
-                            color={
-                              a.paymentStatus === 'PAID'
-                                ? 'success'
-                                : a.paymentStatus === 'NONE'
-                                  ? 'secondary'
-                                  : 'warning'
-                            }
-                          >
-                            {a.paymentStatus}
-                          </CBadge>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CButton
-                            size="sm"
-                            color="outline-primary"
-                            title="View details"
-                            onClick={() => setViewProvider(a)}
-                          >
-                            <CIcon icon={cilZoomIn} size="sm" />
-                          </CButton>
-                        </CTableDataCell>
-                      </CTableRow>
-                    ))}
+                    {/* Sorted by gate so assignments visually cluster per gate
+                        visit — two SPs on the same service/status but
+                        different gates are each a distinct, intentional
+                        assignment, not a duplicate (see project_admin_gates_scope
+                        memory: don't treat these as redundant). */}
+                    {[...trip.providerAssignments]
+                      .sort((a, b) => {
+                        const gateA = a.tripDestinationGate?.destinationGate?.gateName || ''
+                        const gateB = b.tripDestinationGate?.destinationGate?.gateName || ''
+                        return gateA.localeCompare(gateB)
+                      })
+                      .map((a, i) => (
+                        <CTableRow key={a.id}>
+                          <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
+                          <CTableDataCell>
+                            {a.tripDestinationGate?.destinationGate?.gateName ? (
+                              <>
+                                <div className="small fw-semibold">
+                                  {a.tripDestinationGate.destinationGate.gateName}
+                                </div>
+                                {a.tripDestinationGate.destinationGate.zoneType && (
+                                  <div className="small text-muted">
+                                    {a.tripDestinationGate.destinationGate.zoneType}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="small text-muted">—</span>
+                            )}
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <div
+                              className="small fw-semibold"
+                              style={{ color: 'var(--cui-primary)', cursor: 'pointer' }}
+                              onClick={() =>
+                                a.providerUser?.id && navigate(`/users/${a.providerUser.id}`)
+                              }
+                            >
+                              {a.providerUser?.name || '-'}
+                            </div>
+                            <div className="small text-muted">{a.providerUser?.email}</div>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <div className="small fw-semibold">
+                              {a.serviceDetails?.title || a.serviceType}
+                            </div>
+                            {a.serviceDetails?.serviceType && (
+                              <div className="small text-muted">{a.serviceDetails.serviceType}</div>
+                            )}
+                          </CTableDataCell>
+                          <CTableDataCell className="small text-muted">
+                            <div>{fmtDate(a.startDate)}</div>
+                            <div>{fmtDate(a.endDate)}</div>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CBadge
+                              color={ASSIGNMENT_STATUS_COLOR[a.assignmentStatus] || 'secondary'}
+                            >
+                              {a.assignmentStatus}
+                            </CBadge>
+                          </CTableDataCell>
+                          <CTableDataCell className="small">
+                            {fmtPrice(a.agreedAmountMinor ?? a.totalCostMinor)}
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CBadge
+                              color={
+                                a.paymentStatus === 'PAID'
+                                  ? 'success'
+                                  : a.paymentStatus === 'NONE'
+                                    ? 'secondary'
+                                    : 'warning'
+                              }
+                            >
+                              {a.paymentStatus}
+                            </CBadge>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CButton
+                              size="sm"
+                              color="outline-primary"
+                              title="View details"
+                              onClick={() => setViewProvider(a)}
+                            >
+                              <CIcon icon={cilZoomIn} size="sm" />
+                            </CButton>
+                          </CTableDataCell>
+                        </CTableRow>
+                      ))}
                   </CTableBody>
                 </CTable>
               ) : (
                 <div className="text-center py-4 text-muted small">No providers assigned yet.</div>
               )}
+            </CTabPane>
+
+            {/* Payouts */}
+            <CTabPane visible={activeTab === 'payouts'}>
+              {(() => {
+                const schedules = trip.payoutSchedules || []
+                const tmSchedule = schedules.find((s) => s.recipientRole === 'TRIP_MANAGER')
+                const confirmedProviders = (trip.providerAssignments || []).filter(
+                  (a) => a.assignmentStatus === 'CONFIRMED',
+                )
+
+                return (
+                  <div className="d-flex flex-column gap-4">
+                    {/* Trip Manager */}
+                    <div>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <div className="fw-semibold small">
+                          Trip Manager — {trip.createdByUser?.name || 'Unknown'}
+                        </div>
+                        {!tmSchedule && (
+                          <CButton
+                            size="sm"
+                            color="outline-warning"
+                            onClick={() =>
+                              setPayoutReasonModal({ visible: true, type: 'TM', assignmentId: null })
+                            }
+                          >
+                            Schedule Payout
+                          </CButton>
+                        )}
+                      </div>
+                      {tmSchedule ? (
+                        <>
+                          <div className="small text-muted mb-2">
+                            Total {fmtPrice(tmSchedule.totalAmountMinor)} · generated {fmtDateTime(tmSchedule.generatedAt)}
+                            {tmSchedule.notes ? ` · ${tmSchedule.notes}` : ''}
+                          </div>
+                          <MilestoneTable milestones={tmSchedule.milestones} />
+                        </>
+                      ) : (
+                        <div className="text-muted small">No payout schedule yet.</div>
+                      )}
+                    </div>
+
+                    {/* Service Providers */}
+                    <div>
+                      <div className="fw-semibold small mb-2">Service Providers</div>
+                      {confirmedProviders.length === 0 ? (
+                        <div className="text-muted small">No confirmed providers yet.</div>
+                      ) : (
+                        <div className="d-flex flex-column gap-3">
+                          {confirmedProviders.map((a) => {
+                            const schedule = schedules.find((s) => s.tripProviderAssignmentId === a.id)
+                            return (
+                              <div key={a.id} className="p-2 bg-body-secondary rounded">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <div className="small">
+                                    <span className="fw-semibold">{a.providerUser?.name || 'Unknown'}</span>
+                                    <span className="text-muted"> — {a.serviceDetails?.title || a.serviceType}</span>
+                                  </div>
+                                  {!schedule && (
+                                    <CButton
+                                      size="sm"
+                                      color="outline-warning"
+                                      onClick={() =>
+                                        setPayoutReasonModal({ visible: true, type: 'SP', assignmentId: a.id })
+                                      }
+                                    >
+                                      Schedule Payout
+                                    </CButton>
+                                  )}
+                                </div>
+                                {schedule ? (
+                                  <>
+                                    <div className="small text-muted mb-2">
+                                      Total {fmtPrice(schedule.totalAmountMinor)} · generated{' '}
+                                      {fmtDateTime(schedule.generatedAt)}
+                                      {schedule.notes ? ` · ${schedule.notes}` : ''}
+                                    </div>
+                                    <MilestoneTable milestones={schedule.milestones} />
+                                  </>
+                                ) : (
+                                  <div className="text-muted small">No payout schedule yet.</div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </CTabPane>
 
             {/* Reviews */}
@@ -1219,6 +1473,83 @@ const TripDetail = () => {
         <CModalFooter>
           <CButton color="secondary" onClick={() => setViewProvider(null)}>
             Close
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Admin manual payout scheduling — reason required, bypasses the
+          normal TM-payment / webhook gate, so it needs an audit trail. */}
+      <CModal
+        visible={payoutReasonModal.visible}
+        onClose={() => {
+          setPayoutReasonModal({ visible: false, type: null, assignmentId: null })
+          setPayoutReason('')
+        }}
+      >
+        <CModalHeader>
+          <CModalTitle>
+            Schedule {payoutReasonModal.type === 'TM' ? 'Trip Manager' : 'Provider'} Payout
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="small text-muted mb-3">
+            This creates a real payout schedule outside the normal payment flow. Review the
+            schedule below, then provide a reason for the audit trail.
+          </div>
+
+          {payoutPreviewLoading && (
+            <div className="text-center py-3">
+              <CSpinner size="sm" color="primary" />
+            </div>
+          )}
+          {payoutPreviewError && (
+            <CAlert color="danger" className="small py-2">
+              Could not compute a preview — this trip may be missing dates, or (TM) has no PAID
+              payments yet, or (SP) has no agreed amount.
+            </CAlert>
+          )}
+          {payoutPreview && (
+            <div className="mb-3">
+              <div className="small text-muted mb-2">
+                Total {fmtPrice(payoutPreview.totalAmountMinor)} ·{' '}
+                {payoutPreview.kycVerified ? 'KYC verified' : 'Not KYC verified'} —{' '}
+                {payoutPreview.milestones.length} milestone
+                {payoutPreview.milestones.length === 1 ? '' : 's'}
+              </div>
+              <MilestoneTable
+                milestones={payoutPreview.milestones.map((m, i) => ({ ...m, id: `preview-${i}` }))}
+              />
+            </div>
+          )}
+
+          <CFormTextarea
+            rows={3}
+            placeholder="Reason for manually scheduling this payout..."
+            value={payoutReason}
+            onChange={(e) => setPayoutReason(e.target.value)}
+          />
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setPayoutReasonModal({ visible: false, type: null, assignmentId: null })
+              setPayoutReason('')
+            }}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="warning"
+            disabled={
+              !payoutReason.trim() ||
+              !payoutPreview ||
+              scheduleSpPayoutMut.isPending ||
+              scheduleTmPayoutMut.isPending
+            }
+            onClick={submitPayoutReason}
+          >
+            {scheduleSpPayoutMut.isPending || scheduleTmPayoutMut.isPending ? 'Scheduling...' : 'Schedule Payout'}
           </CButton>
         </CModalFooter>
       </CModal>

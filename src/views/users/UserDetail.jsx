@@ -19,6 +19,7 @@ import {
   CFormSelect,
   CFormTextarea,
   CFormInput,
+  CFormCheck,
   CModal,
   CModalHeader,
   CModalTitle,
@@ -53,6 +54,7 @@ import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 import { formatRupees } from '../../lib/constants'
 import AdminMediaGallery from '../../components/AdminMediaGallery'
+import AdminTableFooter from '../../components/AdminTableFooter'
 
 // -- Constants ----------------------------------------------------------------
 
@@ -386,7 +388,14 @@ const UserDetail = () => {
   const [spDestSearch, setSpDestSearch] = useState('')
   const [spDestSelected, setSpDestSelected] = useState('')
   const [spHotspotSelected, setSpHotspotSelected] = useState('')
+  const [spGatesSelected, setSpGatesSelected] = useState([])
   const [spDestError, setSpDestError] = useState(null)
+
+  // Edit-gates modal — scoping an already-linked SP-destination to specific
+  // gates (empty selection = serves the whole destination broadly).
+  const [spEditGatesModal, setSpEditGatesModal] = useState(null) // the spd row being edited, or null
+  const [spEditGatesSelected, setSpEditGatesSelected] = useState([])
+  const [spEditGatesError, setSpEditGatesError] = useState(null)
 
   const {
     data: user,
@@ -400,17 +409,38 @@ const UserDetail = () => {
     },
   })
 
+  // Trips tab — own paginated fetch (not the bootstrap's capped createdTrips
+  // sub-list) so all of a user's trips are reachable, not just the first 20.
+  const [tripsPage, setTripsPage] = useState(1)
+  const [tripsPageSize, setTripsPageSize] = useState(20)
+  const { data: tripsData, isLoading: tripsLoading } = useQuery({
+    queryKey: ['admin-user-trips', id, tripsPage, tripsPageSize],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        createdByUserId: id,
+        limit: tripsPageSize,
+        offset: (tripsPage - 1) * tripsPageSize,
+      })
+      const res = await api.get(`/api/admin/trips?${params}`)
+      return res.data.data
+    },
+    enabled: activeTab === 'trips',
+    placeholderData: (prev) => prev,
+  })
+
   const addSPDestMut = useMutation({
-    mutationFn: ({ destinationId, primaryHotspotId }) =>
+    mutationFn: ({ destinationId, primaryHotspotId, destinationGatesID }) =>
       api.post(`/api/admin/users/${id}/sp-destinations`, {
         destinationId,
         primaryHotspotId: primaryHotspotId || undefined,
+        destinationGatesID: destinationGatesID?.length ? destinationGatesID : undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-user', id] })
       setSpDestModal(false)
       setSpDestSelected('')
       setSpHotspotSelected('')
+      setSpGatesSelected([])
       setSpDestError(null)
     },
     onError: (err) => setSpDestError(err.response?.data?.message || 'Failed to add destination'),
@@ -419,6 +449,17 @@ const UserDetail = () => {
   const removeSPDestMut = useMutation({
     mutationFn: (spdId) => api.delete(`/api/admin/sp-destinations/${spdId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-user', id] }),
+  })
+
+  const updateSPDestGatesMut = useMutation({
+    mutationFn: ({ spdId, destinationGatesID }) =>
+      api.patch(`/api/admin/sp-destinations/${spdId}/gates`, { destinationGatesID }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-user', id] })
+      setSpEditGatesModal(null)
+      setSpEditGatesError(null)
+    },
+    onError: (err) => setSpEditGatesError(err.response?.data?.message || 'Failed to update gates'),
   })
 
   const { data: destSearchData } = useQuery({
@@ -439,6 +480,24 @@ const UserDetail = () => {
       return res.data.data || []
     },
     enabled: !!spDestSelected,
+  })
+
+  const { data: destGates = [] } = useQuery({
+    queryKey: ['admin-dest-gates', spDestSelected],
+    queryFn: async () => {
+      const res = await api.get(`/api/admin/destinations/${spDestSelected}/gates`)
+      return res.data.data || []
+    },
+    enabled: !!spDestSelected,
+  })
+
+  const { data: editDestGates = [] } = useQuery({
+    queryKey: ['admin-dest-gates', spEditGatesModal?.destination?.id],
+    queryFn: async () => {
+      const res = await api.get(`/api/admin/destinations/${spEditGatesModal.destination.id}/gates`)
+      return res.data.data || []
+    },
+    enabled: !!spEditGatesModal?.destination?.id,
   })
 
   if (isLoading)
@@ -719,6 +778,7 @@ const UserDetail = () => {
                               setSpDestError(null)
                               setSpDestSelected('')
                               setSpHotspotSelected('')
+                              setSpGatesSelected([])
                             }}
                           >
                             <CIcon icon={cilPlus} className="me-1" size="sm" />
@@ -732,6 +792,7 @@ const UserDetail = () => {
                                 <CTableHeaderCell>Destination</CTableHeaderCell>
                                 <CTableHeaderCell>Country</CTableHeaderCell>
                                 <CTableHeaderCell>Region / State</CTableHeaderCell>
+                                <CTableHeaderCell>Gates</CTableHeaderCell>
                                 <CTableHeaderCell>Action</CTableHeaderCell>
                               </CTableRow>
                             </CTableHead>
@@ -760,19 +821,45 @@ const UserDetail = () => {
                                       .filter(Boolean)
                                       .join(', ') || '-'}
                                   </CTableDataCell>
+                                  <CTableDataCell className="small">
+                                    {spd.destinationGatesID?.length > 0 ? (
+                                      <CBadge color="info">
+                                        {spd.destinationGatesID.length} gate
+                                        {spd.destinationGatesID.length !== 1 ? 's' : ''}
+                                      </CBadge>
+                                    ) : (
+                                      <CBadge color="secondary">Whole destination</CBadge>
+                                    )}
+                                  </CTableDataCell>
                                   <CTableDataCell>
-                                    <CButton
-                                      size="sm"
-                                      color="outline-danger"
-                                      onClick={() =>
-                                        window.confirm(
-                                          `Remove ${spd.destination?.name} from this SP?`,
-                                        ) && removeSPDestMut.mutate(spd.id)
-                                      }
-                                    >
-                                      <CIcon icon={cilTrash} size="sm" className="me-1" />
-                                      Remove
-                                    </CButton>
+                                    <div className="d-flex gap-1">
+                                      {spd.destination?.id && (
+                                        <CButton
+                                          size="sm"
+                                          color="outline-primary"
+                                          onClick={() => {
+                                            setSpEditGatesModal(spd)
+                                            setSpEditGatesSelected(spd.destinationGatesID || [])
+                                            setSpEditGatesError(null)
+                                          }}
+                                        >
+                                          <CIcon icon={cilPencil} size="sm" className="me-1" />
+                                          Gates
+                                        </CButton>
+                                      )}
+                                      <CButton
+                                        size="sm"
+                                        color="outline-danger"
+                                        onClick={() =>
+                                          window.confirm(
+                                            `Remove ${spd.destination?.name} from this SP?`,
+                                          ) && removeSPDestMut.mutate(spd.id)
+                                        }
+                                      >
+                                        <CIcon icon={cilTrash} size="sm" className="me-1" />
+                                        Remove
+                                      </CButton>
+                                    </div>
                                   </CTableDataCell>
                                 </CTableRow>
                               ))}
@@ -888,46 +975,64 @@ const UserDetail = () => {
 
                 {/* Trips */}
                 <CTabPane visible={activeTab === 'trips'}>
-                  {user.createdTrips?.length > 0 ? (
-                    <CTable small hover responsive>
-                      <CTableHead color="light">
-                        <CTableRow>
-                          <CTableHeaderCell>#</CTableHeaderCell>
-                          <CTableHeaderCell>Title</CTableHeaderCell>
-                          <CTableHeaderCell>Status</CTableHeaderCell>
-                          <CTableHeaderCell>Participants</CTableHeaderCell>
-                          <CTableHeaderCell>Created</CTableHeaderCell>
-                        </CTableRow>
-                      </CTableHead>
-                      <CTableBody>
-                        {user.createdTrips.map((t, idx) => (
-                          <CTableRow key={t.id}>
-                            <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
-                            <CTableDataCell className="small fw-semibold">
-                              <span
-                                role="button"
-                                className="text-primary"
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => navigate(`/trips/${t.id}`)}
-                              >
-                                {t.title}
-                              </span>
-                            </CTableDataCell>
-                            <CTableDataCell>
-                              <CBadge color={TRIP_STATUS_COLOR[t.status] || 'secondary'}>
-                                {t.status}
-                              </CBadge>
-                            </CTableDataCell>
-                            <CTableDataCell className="small text-center">
-                              {t._count?.participants ?? '-'}
-                            </CTableDataCell>
-                            <CTableDataCell className="small text-muted">
-                              {fmtDate(t.createdAt)}
-                            </CTableDataCell>
+                  {tripsLoading && !tripsData ? (
+                    <div className="text-center py-4">
+                      <CSpinner size="sm" />
+                    </div>
+                  ) : tripsData?.trips?.length > 0 ? (
+                    <>
+                      <CTable small hover responsive>
+                        <CTableHead color="light">
+                          <CTableRow>
+                            <CTableHeaderCell>#</CTableHeaderCell>
+                            <CTableHeaderCell>Title</CTableHeaderCell>
+                            <CTableHeaderCell>Status</CTableHeaderCell>
+                            <CTableHeaderCell>Participants</CTableHeaderCell>
+                            <CTableHeaderCell>Created</CTableHeaderCell>
                           </CTableRow>
-                        ))}
-                      </CTableBody>
-                    </CTable>
+                        </CTableHead>
+                        <CTableBody>
+                          {tripsData.trips.map((t, idx) => (
+                            <CTableRow key={t.id}>
+                              <CTableDataCell className="small text-muted">
+                                {(tripsPage - 1) * tripsPageSize + idx + 1}
+                              </CTableDataCell>
+                              <CTableDataCell className="small fw-semibold">
+                                <span
+                                  role="button"
+                                  className="text-primary"
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => navigate(`/trips/${t.id}`)}
+                                >
+                                  {t.title}
+                                </span>
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                <CBadge color={TRIP_STATUS_COLOR[t.status] || 'secondary'}>
+                                  {t.status}
+                                </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-center">
+                                {t._count?.participants ?? '-'}
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {fmtDate(t.createdAt)}
+                              </CTableDataCell>
+                            </CTableRow>
+                          ))}
+                        </CTableBody>
+                      </CTable>
+                      <AdminTableFooter
+                        total={tripsData.total}
+                        page={tripsPage}
+                        pageSize={tripsPageSize}
+                        onPageChange={setTripsPage}
+                        onPageSizeChange={(size) => {
+                          setTripsPageSize(size)
+                          setTripsPage(1)
+                        }}
+                      />
+                    </>
                   ) : (
                     <EmptyState message="No trips created by this user." />
                   )}
@@ -1308,6 +1413,7 @@ const UserDetail = () => {
                 setSpDestSearch(e.target.value)
                 setSpDestSelected('')
                 setSpHotspotSelected('')
+                setSpGatesSelected([])
               }}
             />
           </div>
@@ -1322,6 +1428,7 @@ const UserDetail = () => {
                     setSpDestSelected(d.id)
                     setSpDestSearch(d.name)
                     setSpHotspotSelected('')
+                    setSpGatesSelected([])
                   }}
                 >
                   <span className="fw-semibold">{d.name}</span>
@@ -1346,6 +1453,7 @@ const UserDetail = () => {
                     setSpDestSelected('')
                     setSpDestSearch('')
                     setSpHotspotSelected('')
+                    setSpGatesSelected([])
                   }}
                 >
                   Change
@@ -1370,6 +1478,32 @@ const UserDetail = () => {
                   ))}
                 </CFormSelect>
               )}
+
+              {destGates.length > 0 && (
+                <>
+                  <label className="form-label small fw-semibold mt-3">
+                    Gates{' '}
+                    <span className="text-muted fw-normal">
+                      (optional — leave all unchecked to serve the whole destination)
+                    </span>
+                  </label>
+                  <div className="border rounded p-2" style={{ maxHeight: 180, overflowY: 'auto' }}>
+                    {destGates.map((g) => (
+                      <CFormCheck
+                        key={g.id}
+                        id={`sp-gate-${g.id}`}
+                        label={`${g.gateName}${g.zoneType ? ` (${g.zoneType})` : ''}`}
+                        checked={spGatesSelected.includes(g.id)}
+                        onChange={(e) =>
+                          setSpGatesSelected((prev) =>
+                            e.target.checked ? [...prev, g.id] : prev.filter((gid) => gid !== g.id),
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </CModalBody>
@@ -1390,11 +1524,72 @@ const UserDetail = () => {
               addSPDestMut.mutate({
                 destinationId: spDestSelected,
                 primaryHotspotId: spHotspotSelected || undefined,
+                destinationGatesID: spGatesSelected,
               })
             }
           >
             {addSPDestMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
             Add Destination
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Edit gate-scoping for an already-linked destination */}
+      <CModal visible={!!spEditGatesModal} onClose={() => setSpEditGatesModal(null)}>
+        <CModalHeader>
+          <CModalTitle>Edit Gates — {spEditGatesModal?.destination?.name}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {spEditGatesError && (
+            <CAlert color="danger" dismissible onClose={() => setSpEditGatesError(null)}>
+              {spEditGatesError}
+            </CAlert>
+          )}
+          <p className="small text-muted">
+            Leave all unchecked to have this SP serve the whole destination broadly.
+          </p>
+          {editDestGates.length === 0 ? (
+            <div className="small text-muted">No gates defined for this destination.</div>
+          ) : (
+            <div className="border rounded p-2" style={{ maxHeight: 240, overflowY: 'auto' }}>
+              {editDestGates.map((g) => (
+                <CFormCheck
+                  key={g.id}
+                  id={`sp-edit-gate-${g.id}`}
+                  label={`${g.gateName}${g.zoneType ? ` (${g.zoneType})` : ''}`}
+                  checked={spEditGatesSelected.includes(g.id)}
+                  onChange={(e) =>
+                    setSpEditGatesSelected((prev) =>
+                      e.target.checked ? [...prev, g.id] : prev.filter((gid) => gid !== g.id),
+                    )
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setSpEditGatesModal(null)
+              setSpEditGatesError(null)
+            }}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="primary"
+            disabled={updateSPDestGatesMut.isLoading}
+            onClick={() =>
+              updateSPDestGatesMut.mutate({
+                spdId: spEditGatesModal.id,
+                destinationGatesID: spEditGatesSelected,
+              })
+            }
+          >
+            {updateSPDestGatesMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            Save
           </CButton>
         </CModalFooter>
       </CModal>

@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'build',
     },
     preview: {
-      allowedHosts: ['.up.railway.app', 'localhost', 'admin.globlo.app'],
+      allowedHosts: ['.up.railway.app', 'localhost', 'admin.globlo.app', 'dev.admin.globlo.app'],
     },
     css: {
       postcss: {
