@@ -42,6 +42,7 @@ import {
 } from '@coreui/icons'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
+import { GATE_COST_UNIT_LABELS, GATE_VEHICLE_CATEGORY_LABELS } from '../../lib/constants'
 
 //
 const fmtPrice = (minor) => {
@@ -74,12 +75,44 @@ const parsePhotographyFriendly = (raw) => {
     return { level: raw, compositions: [], recommendedGear: [], tip: '' }
   }
 }
+// nearestPlaces rows are edited as { attractionName, attractionDescription, imagesText, latitude, longitude }
+// and converted to/from the stored shape: { attractionName, attractionDescription, images: string[], latitude, longitude }
+const toPlaceRows = (nearestPlaces) =>
+  (nearestPlaces || []).map((p) => ({
+    attractionName: p.attractionName || '',
+    attractionDescription: p.attractionDescription || '',
+    imagesText: (p.images || []).join(', '),
+    latitude: p.latitude ?? '',
+    longitude: p.longitude ?? '',
+  }))
+
+const fromPlaceRows = (rows) =>
+  rows
+    .filter((r) => r.attractionName.trim())
+    .map((r) => ({
+      attractionName: r.attractionName.trim(),
+      attractionDescription: r.attractionDescription.trim() || undefined,
+      images: r.imagesText
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      latitude: r.latitude !== '' ? parseFloat(r.latitude) : undefined,
+      longitude: r.longitude !== '' ? parseFloat(r.longitude) : undefined,
+    }))
+
 const TRIP_STATUS_COLOR = {
   ACTIVE: 'success',
   RUNNING: 'info',
   DRAFT: 'secondary',
   COMPLETED: 'dark',
   CANCELLED: 'danger',
+}
+
+const DESTINATION_STATUS_COLOR = {
+  DRAFT: 'secondary',
+  PUBLISHED: 'success',
+  HIDDEN: 'warning',
+  ARCHIVED: 'dark',
 }
 
 const InfoRow = ({ label, value }) => (
@@ -193,6 +226,7 @@ const DestinationDetail = () => {
         latitude: dest.latitude ?? '',
         longitude: dest.longitude ?? '',
         isPopular: dest.isPopular || false,
+        status: dest.status || 'DRAFT',
       },
       nature: {
         photographyLevel: parsePhotographyFriendly(dest.photographyFriendly).level,
@@ -207,6 +241,7 @@ const DestinationDetail = () => {
         category: (dest.category || []).join(', '),
         species: (dest.species || []).join(', '),
         conservationStatus: (dest.conservationStatus || []).join(', '),
+        nearestPlaces: toPlaceRows(dest.nearestPlaces),
       },
       access: {
         openTime: dest.openTime || '',
@@ -253,6 +288,7 @@ const DestinationDetail = () => {
         latitude: dest.latitude ?? '',
         longitude: dest.longitude ?? '',
         isPopular: dest.isPopular || false,
+        status: dest.status || 'DRAFT',
       },
       nature: {
         photographyLevel: parsePhotographyFriendly(dest.photographyFriendly).level,
@@ -267,6 +303,7 @@ const DestinationDetail = () => {
         category: (dest.category || []).join(', '),
         species: (dest.species || []).join(', '),
         conservationStatus: (dest.conservationStatus || []).join(', '),
+        nearestPlaces: toPlaceRows(dest.nearestPlaces),
       },
       access: {
         openTime: dest.openTime || '',
@@ -292,9 +329,11 @@ const DestinationDetail = () => {
         latitude: f.latitude !== '' ? parseFloat(f.latitude) : undefined,
         longitude: f.longitude !== '' ? parseFloat(f.longitude) : undefined,
         isPopular: f.isPopular,
+        status: f.status,
       }
     } else if (tab === 'nature') {
       payload = {
+        nearestPlaces: fromPlaceRows(f.nearestPlaces),
         photographyFriendly: JSON.stringify({
           level: f.photographyLevel,
           compositions: f.photographyCompositions
@@ -353,6 +392,38 @@ const DestinationDetail = () => {
   }
 
   const setField = (tab, key, val) => setForms((f) => ({ ...f, [tab]: { ...f[tab], [key]: val } }))
+
+  const addPlaceRow = () =>
+    setForms((f) => ({
+      ...f,
+      nature: {
+        ...f.nature,
+        nearestPlaces: [
+          ...f.nature.nearestPlaces,
+          { attractionName: '', attractionDescription: '', imagesText: '', latitude: '', longitude: '' },
+        ],
+      },
+    }))
+
+  const removePlaceRow = (index) =>
+    setForms((f) => ({
+      ...f,
+      nature: {
+        ...f.nature,
+        nearestPlaces: f.nature.nearestPlaces.filter((_, i) => i !== index),
+      },
+    }))
+
+  const setPlaceRowField = (index, key, val) =>
+    setForms((f) => ({
+      ...f,
+      nature: {
+        ...f.nature,
+        nearestPlaces: f.nature.nearestPlaces.map((row, i) =>
+          i === index ? { ...row, [key]: val } : row,
+        ),
+      },
+    }))
 
   const handleGalleryDelete = async (url) => {
     if (!window.confirm('Remove this image from the gallery?')) return
@@ -510,6 +581,9 @@ const DestinationDetail = () => {
                 {[dest.country, dest.state, dest.region].filter(Boolean).join(' - ')}
               </div>
               <div className="d-flex flex-wrap gap-2">
+                <CBadge color={DESTINATION_STATUS_COLOR[dest.status] || 'secondary'}>
+                  {dest.status || 'DRAFT'}
+                </CBadge>
                 {dest.isPopular && <CBadge color="success">Popular</CBadge>}
                 <CBadge color="light" textColor="dark">
                   {parsePhotographyFriendly(dest.photographyFriendly).level} Photography
@@ -534,7 +608,6 @@ const DestinationDetail = () => {
             {[
               { label: 'Trips', value: dest._count?.trips, color: 'primary' },
               { label: 'Reviews', value: dest._count?.reviews, color: 'warning' },
-              { label: 'Hotspots', value: dest._count?.hotspots, color: 'info' },
               { label: 'Gates', value: dest._count?.gates, color: 'info' },
               { label: 'Sightings', value: dest._count?.sightings, color: 'success' },
               { label: 'Wishlisted', value: dest._count?.wishlistedBy, color: 'secondary' },
@@ -596,6 +669,14 @@ const DestinationDetail = () => {
                     <CListGroup flush>
                       <InfoRow label="ID" value={<code className="small">{dest.id}</code>} />
                       <InfoRow label="Name" value={dest.name} />
+                      <InfoRow
+                        label="Status"
+                        value={
+                          <CBadge color={DESTINATION_STATUS_COLOR[dest.status] || 'secondary'}>
+                            {dest.status || 'DRAFT'}
+                          </CBadge>
+                        }
+                      />
                       <InfoRow label="Country" value={dest.country} />
                       <InfoRow label="State" value={dest.state} />
                       <InfoRow label="Region" value={dest.region} />
@@ -657,6 +738,20 @@ const DestinationDetail = () => {
                         value={f('info').name}
                         onChange={(e) => setField('info', 'name', e.target.value)}
                       />
+                    </EditRow>
+                  </CCol>
+                  <CCol md={3}>
+                    <EditRow label="Status">
+                      <CFormSelect
+                        size="sm"
+                        value={f('info').status}
+                        onChange={(e) => setField('info', 'status', e.target.value)}
+                      >
+                        <option value="DRAFT">Draft</option>
+                        <option value="PUBLISHED">Published</option>
+                        <option value="HIDDEN">Hidden</option>
+                        <option value="ARCHIVED">Archived</option>
+                      </CFormSelect>
                     </EditRow>
                   </CCol>
                   <CCol md={3}>
@@ -785,6 +880,46 @@ const DestinationDetail = () => {
                       value={(dest.conservationStatus || []).join(', ') || null}
                     />
                   </CListGroup>
+
+                  <div
+                    className="small fw-semibold text-uppercase text-muted mt-3 mb-2"
+                    style={{ letterSpacing: '0.03em' }}
+                  >
+                    Nearby Places ({(dest.nearestPlaces || []).length})
+                  </div>
+                  {(dest.nearestPlaces || []).length === 0 ? (
+                    <p className="text-muted small">No nearby places added yet.</p>
+                  ) : (
+                    <div className="d-flex flex-wrap gap-2">
+                      {dest.nearestPlaces.map((np, i) => (
+                        <div
+                          key={i}
+                          className="border rounded p-2"
+                          style={{ width: 220 }}
+                        >
+                          {np.images?.[0] && (
+                            <img
+                              src={np.images[0]}
+                              alt={np.attractionName || ''}
+                              className="rounded mb-1"
+                              style={{ width: '100%', height: 100, objectFit: 'cover' }}
+                            />
+                          )}
+                          <div className="small fw-semibold">{np.attractionName || '-'}</div>
+                          {np.attractionDescription && (
+                            <div className="small text-muted">{np.attractionDescription}</div>
+                          )}
+                          {np.latitude != null && np.longitude != null ? (
+                            <div className="small text-muted mt-1">
+                              {np.latitude}, {np.longitude}
+                            </div>
+                          ) : (
+                            <div className="small text-warning mt-1">No coordinates</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -890,6 +1025,93 @@ const DestinationDetail = () => {
                       </EditRow>
                     </CCol>
                   </CRow>
+
+                  <div className="d-flex justify-content-between align-items-center mt-4 mb-2">
+                    <div
+                      className="small fw-semibold text-uppercase text-muted"
+                      style={{ letterSpacing: '0.03em' }}
+                    >
+                      Nearby Places
+                    </div>
+                    <CButton size="sm" color="outline-primary" onClick={addPlaceRow}>
+                      + Add Place
+                    </CButton>
+                  </div>
+                  {f('nature').nearestPlaces.length === 0 ? (
+                    <p className="text-muted small">No nearby places added yet.</p>
+                  ) : (
+                    f('nature').nearestPlaces.map((row, i) => (
+                      <div key={i} className="border rounded p-3 mb-2 bg-body-tertiary">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <span className="small fw-semibold text-muted">Place {i + 1}</span>
+                          <CButton
+                            size="sm"
+                            color="outline-danger"
+                            variant="ghost"
+                            onClick={() => removePlaceRow(i)}
+                          >
+                            <CIcon icon={cilTrash} size="sm" />
+                          </CButton>
+                        </div>
+                        <CRow className="g-3">
+                          <CCol md={6}>
+                            <EditRow label="Name">
+                              <CFormInput
+                                size="sm"
+                                value={row.attractionName}
+                                onChange={(e) => setPlaceRowField(i, 'attractionName', e.target.value)}
+                                placeholder="Kanha Museum"
+                              />
+                            </EditRow>
+                          </CCol>
+                          <CCol md={3}>
+                            <EditRow label="Latitude">
+                              <CFormInput
+                                size="sm"
+                                type="number"
+                                step="any"
+                                value={row.latitude}
+                                onChange={(e) => setPlaceRowField(i, 'latitude', e.target.value)}
+                              />
+                            </EditRow>
+                          </CCol>
+                          <CCol md={3}>
+                            <EditRow label="Longitude">
+                              <CFormInput
+                                size="sm"
+                                type="number"
+                                step="any"
+                                value={row.longitude}
+                                onChange={(e) => setPlaceRowField(i, 'longitude', e.target.value)}
+                              />
+                            </EditRow>
+                          </CCol>
+                          <CCol md={12}>
+                            <EditRow label="Description">
+                              <CFormTextarea
+                                size="sm"
+                                rows={2}
+                                value={row.attractionDescription}
+                                onChange={(e) =>
+                                  setPlaceRowField(i, 'attractionDescription', e.target.value)
+                                }
+                              />
+                            </EditRow>
+                          </CCol>
+                          <CCol md={12}>
+                            <EditRow label="Image URLs (comma-separated)">
+                              <CFormInput
+                                size="sm"
+                                value={row.imagesText}
+                                onChange={(e) => setPlaceRowField(i, 'imagesText', e.target.value)}
+                                placeholder="https://..., https://..."
+                              />
+                            </EditRow>
+                          </CCol>
+                        </CRow>
+                      </div>
+                    ))
+                  )}
                 </>
               )}
             </CTabPane>
@@ -1016,6 +1238,10 @@ const DestinationDetail = () => {
                       <CTableHeaderCell>Zone</CTableHeaderCell>
                       <CTableHeaderCell>District / Town</CTableHeaderCell>
                       <CTableHeaderCell>Vehicle</CTableHeaderCell>
+                      <CTableHeaderCell>Capacity</CTableHeaderCell>
+                      <CTableHeaderCell>Cost Unit</CTableHeaderCell>
+                      <CTableHeaderCell>Weekday Rate</CTableHeaderCell>
+                      <CTableHeaderCell>Weekend Rate</CTableHeaderCell>
                       <CTableHeaderCell>Rating</CTableHeaderCell>
                       <CTableHeaderCell>Popularity Rank</CTableHeaderCell>
                     </CTableRow>
@@ -1038,7 +1264,28 @@ const DestinationDetail = () => {
                           {[gate.district, gate.nearbyTown].filter(Boolean).join(' · ') || '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
-                          {gate.vehicleType || '-'}
+                          {(gate.vehicleCategory &&
+                            GATE_VEHICLE_CATEGORY_LABELS[gate.vehicleCategory]) ||
+                            gate.vehicleType ||
+                            '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.vehicleMaxCapacity != null
+                            ? `${gate.vehicleMaxCapacity} seats`
+                            : '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {(gate.costUnit && GATE_COST_UNIT_LABELS[gate.costUnit]) || '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.weekdayIndianMinMinor != null
+                            ? fmtPrice(gate.weekdayIndianMinMinor)
+                            : '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.weekendIndianMinMinor != null
+                            ? fmtPrice(gate.weekendIndianMinMinor)
+                            : '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
                           {gate.googleRating != null ? gate.googleRating.toFixed(1) : '-'}

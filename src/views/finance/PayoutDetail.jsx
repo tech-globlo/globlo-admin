@@ -111,7 +111,7 @@ const PayoutDetail = () => {
   // status against the gateway's bank API instead of an admin eyeballing
   // the submitted account details.
   const verifyMethodMut = useMutation({
-    mutationFn: (methodId) => api.post(`/api/admin/payout-methods/${methodId}/verify`),
+    mutationFn: (methodId) => api.post(`/api/admin/payout-methods/${methodId}/verify`, {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-payout', id] })
       setConfirmVerifyMethod(null)

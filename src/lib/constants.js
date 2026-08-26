@@ -190,6 +190,23 @@ export const MEDIA_STATUS_COLOR = {
   REJECTED: 'danger',
 }
 
+// ==================== DESTINATION GATES ====================
+export const GATE_COST_UNIT_LABELS = {
+  PER_VEHICLE: 'Per vehicle',
+  PER_PERSON: 'Per person',
+  PER_SEAT: 'Per seat',
+}
+
+export const GATE_VEHICLE_CATEGORY_LABELS = {
+  GYPSY: 'Gypsy',
+  JEEP: 'Jeep',
+  CANTER: 'Canter',
+  BOAT: 'Boat',
+  ELEPHANT: 'Elephant',
+  VAN_BUS: 'Van/Bus',
+  OTHER: 'Other',
+}
+
 // ==================== PAGINATION ====================
 export const PAGE_SIZE_DEFAULT = 20
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]

@@ -56,6 +56,12 @@ const _nav = [
     to: '/verification/documents',
     icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
   },
+  {
+    component: CNavItem,
+    name: 'Subscribers',
+    to: '/subscribers',
+    icon: <CIcon icon={cilBadge} customClassName="nav-icon" />,
+  },
 
   { component: CNavTitle, name: 'Content' },
   {
