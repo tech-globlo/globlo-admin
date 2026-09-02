@@ -226,10 +226,11 @@ const PaymentDetail = () => {
             <Section title="Amount Breakdown">
               <div className="border rounded overflow-hidden">
                 {[
-                  ['Base Amount',    fmt(payment.amountMinor)],
-                  ['Platform Fee',   fmt(payment.platformFeeMinor)],
-                  ['Gateway Fee',    fmt(payment.gatewayFeeMinor)],
-                  ['GST on Gateway', fmt(payment.gatewayTaxMinor)],
+                  ['Base Amount',          fmt(payment.amountMinor)],
+                  ['Platform Fee',         fmt(payment.platformFeeMinor)],
+                  ['GST on Platform Fee',  fmt(payment.taxAmountMinor)],
+                  ['Gateway Fee',          fmt(payment.gatewayFeeMinor)],
+                  ['GST on Gateway',       fmt(payment.gatewayTaxMinor)],
                   ...(discountAmt > 0 ? [['Discount Applied', '-' + fmt(payment.discountAmountMinor)]] : []),
                 ].map(([label, value]) => (
                   <div key={label} className="d-flex justify-content-between px-3 py-2 small" style={{ borderBottom: '1px solid var(--cui-border-color)' }}>
