@@ -183,6 +183,40 @@ const MediaSidebar = ({ item, brokenIds, onClose, onDelete, onToggleApproval, de
       value: `${(item.verificationDocument.docType || '').replace(/_/g, ' ').toLowerCase()} (${item.verificationDocument.verificationStatus})`,
     })
   }
+  // PROFILE_PHOTO / PROFILE_COVER / PORTFOLIO have no typed parent FK in the
+  // schema — the uploader IS the entity it belongs to, so reuse the
+  // already-fetched `user` relation instead of a dedicated link field.
+  // User.profilePhotoUrl is a legacy fallback only — the app actually
+  // resolves "current" as the latest READY Media row per (user, type), same
+  // as UserService.getProfile / ProfileService.getPublicProfile. The backend
+  // mirrors that exact definition into `isCurrentProfileMedia` (see
+  // adminListMedia) rather than this comparing against a stale field.
+  // PORTFOLIO is a multi-image collection with no single "current" concept.
+  if (['PROFILE_PHOTO', 'PROFILE_COVER', 'PORTFOLIO'].includes(item.type) && item.user) {
+    if (item.type === 'PORTFOLIO') {
+      usedIn.push({ label: 'Profile', value: item.user.name })
+    } else {
+      usedIn.push({
+        label: item.type === 'PROFILE_PHOTO' ? 'Profile' : 'Cover',
+        value: `${item.user.name} (${item.isCurrentProfileMedia ? 'current' : 'previous'})`,
+      })
+    }
+  }
+  if (item.messages?.length > 0) {
+    item.messages.forEach((m) => {
+      usedIn.push({ label: 'Message', value: `sent by ${m.sender?.name || 'unknown'}` })
+    })
+  }
+  if (item.mediaSightings?.length > 0) {
+    item.mediaSightings.forEach((s) => {
+      usedIn.push({ label: 'Sighting', value: `${s.species || 'unspecified species'} — ${s.trip?.title || 'trip'}` })
+    })
+  }
+  if (item.promotedFromSightings?.length > 0) {
+    item.promotedFromSightings.forEach((s) => {
+      usedIn.push({ label: 'Promoted Sighting', value: s.sighting?.speciesText || 'unspecified species' })
+    })
+  }
 
   return (
     <COffcanvas placement="end" visible={!!item} onHide={onClose} scroll backdrop={false} style={{ width: 340 }}>
