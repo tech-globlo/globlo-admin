@@ -34,6 +34,7 @@ const statusColor = {
   SUSPENDED: 'warning',
   BANNED: 'danger',
   DEACTIVATED: 'secondary',
+  PENDING_DELETION: 'dark',
 }
 
 const roleLabel = {
@@ -134,6 +135,7 @@ const UserList = () => {
               <option value="SUSPENDED">Suspended</option>
               <option value="BANNED">Banned</option>
               <option value="DEACTIVATED">Deactivated</option>
+              <option value="PENDING_DELETION">Pending Deletion</option>
             </CFormSelect>
           </CCol>
         </CRow>

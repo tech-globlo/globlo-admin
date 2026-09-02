@@ -63,6 +63,7 @@ const STATUS_COLOR = {
   SUSPENDED: 'warning',
   BANNED: 'danger',
   DEACTIVATED: 'secondary',
+  PENDING_DELETION: 'dark',
 }
 const DOC_STATUS_COLOR = {
   PENDING: 'warning',
@@ -168,6 +169,10 @@ const ActionPanel = ({ user, id, qc }) => {
   const [reason, setReason] = useState('')
   const [statusError, setStatusError] = useState(null)
 
+  const [hardDeleteModal, setHardDeleteModal] = useState(false)
+  const [hardDeleteReason, setHardDeleteReason] = useState('')
+  const [hardDeleteError, setHardDeleteError] = useState(null)
+
   const [activityOffset, setActivityOffset] = useState(0)
 
   const {
@@ -211,6 +216,26 @@ const ActionPanel = ({ user, id, qc }) => {
     statusMut.mutate({ status: newStatus, reason })
   }
 
+  const hardDeleteMut = useMutation({
+    mutationFn: (reason) => api.post(`/api/admin/users/${id}/hard-delete`, { reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-user', id] })
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      setHardDeleteModal(false)
+      setHardDeleteReason('')
+      setHardDeleteError(null)
+    },
+    onError: (err) => setHardDeleteError(err.response?.data?.message || 'Failed to hard-delete user'),
+  })
+
+  const handleHardDeleteSubmit = () => {
+    if (!hardDeleteReason.trim()) {
+      setHardDeleteError('Reason is required')
+      return
+    }
+    hardDeleteMut.mutate(hardDeleteReason)
+  }
+
   return (
     <>
       {/* Status */}
@@ -245,6 +270,20 @@ const ActionPanel = ({ user, id, qc }) => {
               <CIcon icon={cilMoney} size="sm" className="me-1" />
               View Payments
             </CButton>
+            {user.accountStatus === 'PENDING_DELETION' && (
+              <CButton
+                size="sm"
+                color="outline-danger"
+                onClick={() => {
+                  setHardDeleteReason('')
+                  setHardDeleteError(null)
+                  setHardDeleteModal(true)
+                }}
+              >
+                <CIcon icon={cilTrash} size="sm" className="me-1" />
+                Hard Delete
+              </CButton>
+            )}
           </div>
         </CCardBody>
       </CCard>
@@ -368,6 +407,58 @@ const ActionPanel = ({ user, id, qc }) => {
           <CButton color="primary" onClick={handleStatusSubmit} disabled={statusMut.isLoading}>
             {statusMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
             Confirm
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Hard Delete Modal */}
+      <CModal
+        visible={hardDeleteModal}
+        onClose={() => {
+          setHardDeleteModal(false)
+          setHardDeleteError(null)
+        }}
+      >
+        <CModalHeader>
+          <CModalTitle>Hard Delete User</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {hardDeleteError && (
+            <CAlert color="danger" className="py-2 small mb-3">
+              {hardDeleteError}
+            </CAlert>
+          )}
+          <CAlert color="warning" className="py-2 small mb-3">
+            This permanently anonymizes {user.name}'s profile (name, email, phone,
+            documents, portfolio) and deletes their photos/media, favorites, and
+            device tokens. Trip and payment history is kept but de-identified —
+            this cannot be undone.
+          </CAlert>
+          <div>
+            <label className="form-label small fw-semibold">
+              Reason <span className="text-danger">*</span>
+            </label>
+            <CFormTextarea
+              rows={3}
+              placeholder="Provide a reason for this hard delete."
+              value={hardDeleteReason}
+              onChange={(e) => setHardDeleteReason(e.target.value)}
+            />
+          </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setHardDeleteModal(false)
+              setHardDeleteError(null)
+            }}
+          >
+            Cancel
+          </CButton>
+          <CButton color="danger" onClick={handleHardDeleteSubmit} disabled={hardDeleteMut.isLoading}>
+            {hardDeleteMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            Permanently Delete
           </CButton>
         </CModalFooter>
       </CModal>
