@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader,
@@ -28,17 +29,23 @@ const fetchDestinations = async ({ limit, offset, search, isPopular, sortBy, sor
 const DestinationList = () => {
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [popularFilter, setPopularFilter] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    search: { default: '' },
+    popularFilter: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, search, popularFilter, sortBy, sortOrder } = filters
+  // Typing buffer only — not URL-synced itself, it initializes from the
+  // already-persisted `search` value below so it's still correct on
+  // remount, without needing to sync every keystroke to the URL.
+  const [searchInput, setSearchInput] = useState(search)
 
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => { setFilters({ sortBy: field, sortOrder: order, page: 1 }) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-destinations', { page, pageSize, search, popularFilter, sortBy, sortOrder }],
@@ -53,8 +60,7 @@ const DestinationList = () => {
 
   const handleSearch = (e) => {
     e.preventDefault()
-    setSearch(searchInput)
-    setPage(1)
+    setFilters({ search: searchInput, page: 1 })
   }
 
   return (
@@ -85,7 +91,7 @@ const DestinationList = () => {
             <CFormSelect
               size="sm"
               value={popularFilter}
-              onChange={(e) => { setPopularFilter(e.target.value); setPage(1) }}
+              onChange={(e) => setFilters({ popularFilter: e.target.value, page: 1 })}
             >
               <option value="">Popular: all</option>
               <option value="true">Popular only</option>
@@ -160,8 +166,8 @@ const DestinationList = () => {
               total={data.total}
               page={page}
               pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+              onPageChange={(p) => setFilters({ page: p })}
+              onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
             />
           </>
         )}

@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react'
+﻿import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader, CCol, CRow,
@@ -30,14 +31,17 @@ const fetchPayments = async ({ limit, offset, status, sortBy, sortOrder }) => {
 
 const PaymentList = () => {
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    statusFilter: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, statusFilter, sortBy, sortOrder } = filters
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => { setFilters({ sortBy: field, sortOrder: order, page: 1 }) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-payments', { page, pageSize, statusFilter, sortBy, sortOrder }],
@@ -54,7 +58,7 @@ const PaymentList = () => {
       <CCardBody>
         <CRow className="mb-3">
           <CCol md={3}>
-            <CFormSelect size="sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}>
+            <CFormSelect size="sm" value={statusFilter} onChange={(e) => setFilters({ statusFilter: e.target.value, page: 1 })}>
               <option value="">All statuses</option>
               {['PENDING', 'PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'CANCELLED', 'FAILED'].map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -116,8 +120,8 @@ const PaymentList = () => {
               total={data.total}
               page={page}
               pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+              onPageChange={(p) => setFilters({ page: p })}
+              onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
             />
           </>
         )}

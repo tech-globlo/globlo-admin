@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader,
@@ -26,15 +27,18 @@ const fetchReviews = async ({ limit, offset, isDeleted, isVerified, sortBy, sort
 
 const ReviewList = () => {
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [isDeleted, setIsDeleted] = useState('')
-  const [isVerified, setIsVerified] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    isDeleted: { default: '' },
+    isVerified: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, isDeleted, isVerified, sortBy, sortOrder } = filters
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => { setFilters({ sortBy: field, sortOrder: order, page: 1 }) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-reviews', { page, pageSize, isDeleted, isVerified, sortBy, sortOrder }],
@@ -86,14 +90,14 @@ const ReviewList = () => {
       <CCardBody>
         <CRow className="mb-3 g-2">
           <CCol md={3}>
-            <CFormSelect size="sm" value={isDeleted} onChange={(e) => { setIsDeleted(e.target.value); setPage(1) }}>
+            <CFormSelect size="sm" value={isDeleted} onChange={(e) => setFilters({ isDeleted: e.target.value, page: 1 })}>
               <option value="">All</option>
               <option value="false">Active only</option>
               <option value="true">Deleted only</option>
             </CFormSelect>
           </CCol>
           <CCol md={3}>
-            <CFormSelect size="sm" value={isVerified} onChange={(e) => { setIsVerified(e.target.value); setPage(1) }}>
+            <CFormSelect size="sm" value={isVerified} onChange={(e) => setFilters({ isVerified: e.target.value, page: 1 })}>
               <option value="">Verification: all</option>
               <option value="true">Verified</option>
               <option value="false">Unverified</option>
@@ -169,8 +173,8 @@ const ReviewList = () => {
               total={data.total}
               page={page}
               pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+              onPageChange={(p) => setFilters({ page: p })}
+              onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
             />
           </>
         )}
