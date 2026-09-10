@@ -20,6 +20,14 @@ const STATUS_COLOR = {
   REFUNDED: 'secondary', CANCELLED: 'dark', FAILED: 'danger',
 }
 
+// BookingParticipant.status — separate from Payment.status above. A PG can
+// cancel after paying without the payment itself being reversed (that only
+// happens via a Refund), so these two statuses regularly disagree and both
+// need to be visible side by side.
+const BOOKING_STATUS_COLOR = {
+  PENDING: 'warning', SUCCESS: 'success', CANCELLED: 'dark', FAILED: 'danger', REJECTED: 'secondary',
+}
+
 const fetchPayments = async ({ limit, offset, status, sortBy, sortOrder }) => {
   const params = new URLSearchParams({ limit, offset })
   if (status) params.set('status', status)
@@ -82,6 +90,7 @@ const PaymentList = () => {
                   <CTableHeaderCell>Fee</CTableHeaderCell>
                   <CTableHeaderCell>Method</CTableHeaderCell>
                   <SortableHeader field="status" label="Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                  <CTableHeaderCell>Booking Status</CTableHeaderCell>
                   <CTableHeaderCell>Refunds</CTableHeaderCell>
                   <SortableHeader field="createdAt" label="Date" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>Action</CTableHeaderCell>
@@ -101,6 +110,15 @@ const PaymentList = () => {
                     <CTableDataCell className="small">{p.paymentMethod || '-'}</CTableDataCell>
                     <CTableDataCell>
                       <CBadge color={STATUS_COLOR[p.status] || 'secondary'}>{p.status}</CBadge>
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      {p.participant?.status ? (
+                        <CBadge color={BOOKING_STATUS_COLOR[p.participant.status] || 'secondary'}>
+                          {p.participant.status}
+                        </CBadge>
+                      ) : (
+                        <span className="text-muted small">-</span>
+                      )}
                     </CTableDataCell>
                     <CTableDataCell className="small">{p.refunds?.length || 0}</CTableDataCell>
                     <CTableDataCell className="small text-muted">

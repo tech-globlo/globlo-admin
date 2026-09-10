@@ -34,11 +34,12 @@ import {
   CModalFooter,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPencil, cilCheck, cilX, cilArrowLeft, cilZoomIn, cilStar } from '@coreui/icons'
+import { cilPencil, cilCheck, cilX, cilArrowLeft, cilZoomIn, cilStar, cilCalendarCheck } from '@coreui/icons'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 import { formatRupees } from '../../lib/constants'
 import AdminMediaGallery from '../../components/AdminMediaGallery'
+import { ParticipantMilestoneTable } from '../../components/ParticipantMilestoneTable'
 
 const fmtPrice = (minor) => (minor == null ? '-' : formatRupees(minor, { decimals: 0 }))
 
@@ -178,6 +179,11 @@ const TripDetail = () => {
   const [tabError, setTabError] = useState(null)
   const [tabSuccess, setTabSuccess] = useState(null)
   const [viewProvider, setViewProvider] = useState(null)
+  // Holds the participant row whose staged/installment payment schedule is
+  // being viewed — null when the modal is closed. Only ever set for a
+  // participant that actually has a participantSchedule (see the Action
+  // column icon below, which only renders when one exists).
+  const [viewParticipantSchedule, setViewParticipantSchedule] = useState(null)
   // { visible, type: 'TM' | 'SP', assignmentId? } — reason is required by
   // the backend (adminScheduleSpPayout/adminScheduleTmPayout both take a
   // mandatory `reason` string) since this bypasses the normal payment gate.
@@ -707,6 +713,21 @@ const TripDetail = () => {
                         )
                       }
                     />
+                    {/* Read-only — mirrors the Full Payment / Payment Breakup
+                        choice made once at trip-create (Trip.paymentScheduleConfigId),
+                        not editable here. */}
+                    <InfoRow
+                      label="Payment Type"
+                      value={
+                        trip.paymentScheduleConfigId ? (
+                          <CBadge color="info">
+                            Payment Breakup{trip.paymentScheduleConfig?.name ? ` — ${trip.paymentScheduleConfig.name}` : ''}
+                          </CBadge>
+                        ) : (
+                          <CBadge color="secondary">Full Payment</CBadge>
+                        )
+                      }
+                    />
                     {editing ? (
                       <>
                         <InfoRow
@@ -974,21 +995,41 @@ const TripDetail = () => {
                             ) : (
                               <span className="small text-muted">-</span>
                             )}
+                            {p.participantSchedule && (
+                              <div className="small text-muted mt-1">
+                                Staged{' '}
+                                {p.participantSchedule.milestones.filter((m) => m.status === 'PAID').length}/
+                                {p.participantSchedule.milestones.length} paid
+                              </div>
+                            )}
                           </CTableDataCell>
                           <CTableDataCell className="small">{fmtPrice(p.amountDue)}</CTableDataCell>
                           <CTableDataCell className="small text-muted">
                             {fmtDate(p.createdAt)}
                           </CTableDataCell>
                           <CTableDataCell>
-                            {p.user?.id && (
-                              <CButton
-                                size="sm"
-                                color="outline-primary"
-                                onClick={() => navigate(`/users/${p.user.id}`)}
-                              >
-                                <CIcon icon={cilZoomIn} size="sm" />
-                              </CButton>
-                            )}
+                            <div className="d-flex gap-1">
+                              {p.user?.id && (
+                                <CButton
+                                  size="sm"
+                                  color="outline-primary"
+                                  title="View user"
+                                  onClick={() => navigate(`/users/${p.user.id}`)}
+                                >
+                                  <CIcon icon={cilZoomIn} size="sm" />
+                                </CButton>
+                              )}
+                              {p.participantSchedule && (
+                                <CButton
+                                  size="sm"
+                                  color="outline-info"
+                                  title="View payment schedule"
+                                  onClick={() => setViewParticipantSchedule(p)}
+                                >
+                                  <CIcon icon={cilCalendarCheck} size="sm" />
+                                </CButton>
+                              )}
+                            </div>
                           </CTableDataCell>
                         </CTableRow>
                       )
@@ -1009,7 +1050,9 @@ const TripDetail = () => {
                       <CTableHeaderCell>#</CTableHeaderCell>
                       <CTableHeaderCell>From</CTableHeaderCell>
                       <CTableHeaderCell>Amount</CTableHeaderCell>
+                      <CTableHeaderCell>Discount</CTableHeaderCell>
                       <CTableHeaderCell>Platform Fee</CTableHeaderCell>
+                      <CTableHeaderCell>Tax (GST)</CTableHeaderCell>
                       <CTableHeaderCell>Total</CTableHeaderCell>
                       <CTableHeaderCell>Method</CTableHeaderCell>
                       <CTableHeaderCell>Status</CTableHeaderCell>
@@ -1037,7 +1080,24 @@ const TripDetail = () => {
                           {fmtPrice(pay.amountMinor)}
                         </CTableDataCell>
                         <CTableDataCell className="small">
+                          {pay.discountAmountMinor > 0 ? (
+                            <>
+                              <div className="text-success">-{fmtPrice(pay.discountAmountMinor)}</div>
+                              {pay.discount?.code && (
+                                <div className="text-muted" style={{ fontSize: 11 }}>
+                                  {pay.discount.code}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </CTableDataCell>
+                        <CTableDataCell className="small">
                           {fmtPrice(pay.platformFeeMinor)}
+                        </CTableDataCell>
+                        <CTableDataCell className="small">
+                          {fmtPrice(pay.taxAmountMinor)}
                         </CTableDataCell>
                         <CTableDataCell className="small fw-semibold">
                           {fmtPrice(pay.totalAmountMinor)}
@@ -1472,6 +1532,41 @@ const TripDetail = () => {
         </CModalBody>
         <CModalFooter>
           <CButton color="secondary" onClick={() => setViewProvider(null)}>
+            Close
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Participant's staged/installment payment schedule — only ever
+          opened from an Action-column icon that itself only renders when
+          participantSchedule exists, so viewParticipantSchedule is always
+          non-null with real milestones by the time this is visible. */}
+      <CModal
+        visible={!!viewParticipantSchedule}
+        onClose={() => setViewParticipantSchedule(null)}
+        size="lg"
+      >
+        <CModalHeader>
+          <CModalTitle>Payment Schedule — {viewParticipantSchedule?.user?.name || 'Participant'}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {viewParticipantSchedule?.participantSchedule && (
+            <>
+              <div className="small text-muted mb-3">
+                Total: {fmtPrice(viewParticipantSchedule.participantSchedule.totalAmountMinor)}
+                {viewParticipantSchedule.participantSchedule.notes && (
+                  <> — {viewParticipantSchedule.participantSchedule.notes}</>
+                )}
+              </div>
+              <ParticipantMilestoneTable
+                milestones={viewParticipantSchedule.participantSchedule.milestones}
+                onViewPayment={(paymentId) => navigate(`/payments/${paymentId}`)}
+              />
+            </>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setViewParticipantSchedule(null)}>
             Close
           </CButton>
         </CModalFooter>

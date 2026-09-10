@@ -184,6 +184,46 @@ const PaymentDetail = () => {
   const discountAmt = Number(payment.discountAmountMinor || 0)
   const refunded    = Number(payment.refundedAmountMinor || 0)
 
+  // amountMinor/platformFeeMinor are already net-of-discount by the time
+  // they're stored (computed in lib/payments/pricing/compute.ts before the
+  // Payment row is created) — reconstruct the gross figure from discount.kind
+  // so the breakdown reads gross → discount → net instead of one disconnected
+  // "Discount Applied" line that doesn't actually subtract from anything shown.
+  const isFeeWaiver = payment.discount?.kind === 'PLATFORM_FEE_WAIVER'
+  const discountLabel = payment.discount?.code ? ` (${payment.discount.code})` : ''
+  const grossBaseMinor = discountAmt > 0 && !isFeeWaiver
+    ? Number(payment.amountMinor || 0) + discountAmt
+    : null
+  const grossPlatformFeeMinor = discountAmt > 0 && isFeeWaiver
+    ? Number(payment.platformFeeMinor || 0) + discountAmt
+    : null
+
+  const breakdownRows = []
+  if (grossBaseMinor != null) {
+    breakdownRows.push(['Base Amount (before discount)', fmt(grossBaseMinor)])
+    breakdownRows.push(['Discount Applied' + discountLabel, '-' + fmt(payment.discountAmountMinor)])
+    breakdownRows.push(['Base Amount (net)', fmt(payment.amountMinor)])
+  } else {
+    breakdownRows.push(['Base Amount', fmt(payment.amountMinor)])
+  }
+  if (grossPlatformFeeMinor != null) {
+    breakdownRows.push(['Platform Fee (before waiver)', fmt(grossPlatformFeeMinor)])
+    breakdownRows.push(['Platform Fee Waived' + discountLabel, '-' + fmt(payment.discountAmountMinor)])
+    breakdownRows.push(['Platform Fee (net)', fmt(payment.platformFeeMinor)])
+  } else {
+    breakdownRows.push(['Platform Fee', fmt(payment.platformFeeMinor)])
+  }
+  breakdownRows.push(['GST on Platform Fee', fmt(payment.taxAmountMinor)])
+
+  // Razorpay's own cut of the transaction, deducted from Globlo's
+  // settlement — never charged to the customer, so it's shown as its own
+  // tinted block below rather than mixed into the rows above (those sum
+  // exactly to Total Charged; these two never did).
+  const gatewayRows = [
+    ['Gateway Fee', fmt(payment.gatewayFeeMinor)],
+    ['GST on Gateway', fmt(payment.gatewayTaxMinor)],
+  ]
+
   return (
     <CCard>
       <CCardHeader>
@@ -224,15 +264,11 @@ const PaymentDetail = () => {
 
             {/* Money breakdown */}
             <Section title="Amount Breakdown">
-              <div className="border rounded overflow-hidden">
-                {[
-                  ['Base Amount',          fmt(payment.amountMinor)],
-                  ['Platform Fee',         fmt(payment.platformFeeMinor)],
-                  ['GST on Platform Fee',  fmt(payment.taxAmountMinor)],
-                  ['Gateway Fee',          fmt(payment.gatewayFeeMinor)],
-                  ['GST on Gateway',       fmt(payment.gatewayTaxMinor)],
-                  ...(discountAmt > 0 ? [['Discount Applied', '-' + fmt(payment.discountAmountMinor)]] : []),
-                ].map(([label, value]) => (
+              <div className="small fw-bold text-uppercase text-muted mb-1" style={{ letterSpacing: 1, fontSize: 10 }}>
+                Customer Paid
+              </div>
+              <div className="border rounded overflow-hidden mb-3">
+                {breakdownRows.map(([label, value]) => (
                   <div key={label} className="d-flex justify-content-between px-3 py-2 small" style={{ borderBottom: '1px solid var(--cui-border-color)' }}>
                     <span className="text-muted">{label}</span>
                     <span className="fw-semibold">{value}</span>
@@ -248,6 +284,31 @@ const PaymentDetail = () => {
                     <span className="fw-semibold">{fmt(payment.refundedAmountMinor)}</span>
                   </div>
                 )}
+              </div>
+
+              {/* Visually distinct — never part of "Customer Paid" or Total
+                  Charged above, so it must never look like it belongs to
+                  the same running total. */}
+              <div className="small fw-bold text-uppercase mb-1" style={{ letterSpacing: 1, fontSize: 10, color: '#8a6116' }}>
+                Gateway Cost (Globlo Settlement)
+              </div>
+              <div
+                className="border rounded overflow-hidden"
+                style={{ background: 'rgba(240, 173, 78, 0.10)', borderColor: 'rgba(240, 173, 78, 0.4)' }}
+              >
+                {gatewayRows.map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="d-flex justify-content-between px-3 py-2 small"
+                    style={{ borderBottom: '1px solid rgba(240, 173, 78, 0.4)', color: '#8a6116' }}
+                  >
+                    <span style={{ opacity: 0.85 }}>{label}</span>
+                    <span className="fw-semibold">{value}</span>
+                  </div>
+                ))}
+                <div className="px-3 py-2" style={{ fontSize: 11, color: '#8a6116', opacity: 0.85, lineHeight: 1.5 }}>
+                  Deducted from Globlo's Razorpay settlement — not charged to the customer, and not part of Total Charged above.
+                </div>
               </div>
             </Section>
 
