@@ -51,6 +51,21 @@ const EMPTY_REFUND = {
   tiers: '',
 }
 
+// PolicyConfig(type=PAYMENT_SCHEDULE) reuses the same `milestones` JSON
+// column PAYOUT uses (schema convenience, see generate-participant.ts) —
+// the form key stays `milestones` here too so buildPayload/openEdit need no
+// special-casing, the UI just labels it "Installments".
+const EMPTY_PAYMENT_SCHEDULE = {
+  type: 'PAYMENT_SCHEDULE',
+  name: '',
+  effectiveFrom: '',
+  effectiveUntil: '',
+  notes: '',
+  milestones: '',
+}
+
+const TYPE_LABEL = { PAYOUT: 'Payout', REFUND: 'Refund', PAYMENT_SCHEDULE: 'Payment Schedule' }
+
 const parseJson = (str) => {
   if (!str || str.trim() === '') return undefined
   try { return JSON.parse(str) } catch { return str }
@@ -91,9 +106,14 @@ const PolicySettings = () => {
     queryFn: () => api.get('/api/admin/policy-configs?type=REFUND').then((r) => r.data.data),
   })
 
+  const { data: schedulePolicies, isLoading: loadingSchedule, isError: errSchedule } = useQuery({
+    queryKey: ['admin-policy-configs', 'PAYMENT_SCHEDULE'],
+    queryFn: () => api.get('/api/admin/policy-configs?type=PAYMENT_SCHEDULE').then((r) => r.data.data),
+  })
+
   const openCreate = (type) => {
     setEditId(null)
-    setForm(type === 'PAYOUT' ? EMPTY_PAYOUT : EMPTY_REFUND)
+    setForm(type === 'PAYOUT' ? EMPTY_PAYOUT : type === 'REFUND' ? EMPTY_REFUND : EMPTY_PAYMENT_SCHEDULE)
     setMutError('')
     setJsonErrors({})
     setModal(true)
@@ -112,6 +132,15 @@ const PolicySettings = () => {
         milestones: toJsonStr(p.milestones),
         nonVerifiedMilestone: toJsonStr(p.nonVerifiedMilestone),
         disputeWindowDays: String(p.disputeWindowDays ?? 3),
+      })
+    } else if (p.type === 'PAYMENT_SCHEDULE') {
+      setForm({
+        type: 'PAYMENT_SCHEDULE',
+        name: p.name || '',
+        effectiveFrom: p.effectiveFrom ? p.effectiveFrom.slice(0, 10) : '',
+        effectiveUntil: p.effectiveUntil ? p.effectiveUntil.slice(0, 10) : '',
+        notes: p.notes || '',
+        milestones: toJsonStr(p.milestones),
       })
     } else {
       setForm({
@@ -146,6 +175,12 @@ const PolicySettings = () => {
         disputeWindowDays: form.disputeWindowDays ? parseInt(form.disputeWindowDays, 10) : undefined,
       }
     }
+    if (form.type === 'PAYMENT_SCHEDULE') {
+      return {
+        ...base,
+        milestones: parseJson(form.milestones),
+      }
+    }
     return {
       ...base,
       appliesTo: form.appliesTo || undefined,
@@ -158,7 +193,7 @@ const PolicySettings = () => {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['admin-policy-configs'] })
       setModal(false)
-      flash(`${form.type === 'PAYOUT' ? 'Payout' : 'Refund'} policy created.`)
+      flash(`${TYPE_LABEL[form.type]} policy created.`)
     },
     onError: (err) => setMutError(err?.response?.data?.message || 'Failed to create policy.'),
   })
@@ -208,6 +243,7 @@ const PolicySettings = () => {
               {type === 'PAYOUT' && <CTableHeaderCell>Recipient Role</CTableHeaderCell>}
               {type === 'PAYOUT' && <CTableHeaderCell>Dispute Window</CTableHeaderCell>}
               {type === 'REFUND' && <CTableHeaderCell>Applies To</CTableHeaderCell>}
+              {type === 'PAYMENT_SCHEDULE' && <CTableHeaderCell>Installments</CTableHeaderCell>}
               <CTableHeaderCell>Effective From</CTableHeaderCell>
               <CTableHeaderCell>Effective Until</CTableHeaderCell>
               <CTableHeaderCell>Status</CTableHeaderCell>
@@ -237,6 +273,11 @@ const PolicySettings = () => {
                       {p.appliesTo
                         ? <CBadge color="warning" textColor="dark">{p.appliesTo.replace(/_/g, ' ')}</CBadge>
                         : <span className="text-muted small">—</span>}
+                    </CTableDataCell>
+                  )}
+                  {type === 'PAYMENT_SCHEDULE' && (
+                    <CTableDataCell className="small">
+                      {Array.isArray(p.milestones) ? `${p.milestones.length} installment${p.milestones.length === 1 ? '' : 's'}` : '—'}
                     </CTableDataCell>
                   )}
                   <CTableDataCell className="small">{fmtDate(p.effectiveFrom)}</CTableDataCell>
@@ -272,9 +313,9 @@ const PolicySettings = () => {
     <>
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
-          <strong>Payout / Refund Policies</strong>
+          <strong>Payout / Refund / Payment Schedule Policies</strong>
           <CButton size="sm" color="primary" onClick={() => openCreate(activeTab)}>
-            + New {activeTab === 'PAYOUT' ? 'Payout' : 'Refund'} Policy
+            + New {TYPE_LABEL[activeTab]} Policy
           </CButton>
         </CCardHeader>
         <CCardBody>
@@ -292,6 +333,11 @@ const PolicySettings = () => {
                 Refund Policies
               </CNavLink>
             </CNavItem>
+            <CNavItem>
+              <CNavLink active={activeTab === 'PAYMENT_SCHEDULE'} onClick={() => setActiveTab('PAYMENT_SCHEDULE')} style={{ cursor: 'pointer' }}>
+                Payment Schedule Policies
+              </CNavLink>
+            </CNavItem>
           </CNav>
 
           <CTabContent>
@@ -301,6 +347,9 @@ const PolicySettings = () => {
             <CTabPane visible={activeTab === 'REFUND'}>
               <PolicyTable policies={refundPolicies} loading={loadingRefund} error={errRefund} type="REFUND" />
             </CTabPane>
+            <CTabPane visible={activeTab === 'PAYMENT_SCHEDULE'}>
+              <PolicyTable policies={schedulePolicies} loading={loadingSchedule} error={errSchedule} type="PAYMENT_SCHEDULE" />
+            </CTabPane>
           </CTabContent>
         </CCardBody>
       </CCard>
@@ -308,7 +357,7 @@ const PolicySettings = () => {
       {/* ── Create / Edit Modal ──────────────────────────────────────────── */}
       <CModal size="lg" visible={modal} onClose={() => { setModal(false); setMutError('') }}>
         <CModalHeader>
-          <CModalTitle>{editId ? 'Edit' : 'New'} {form.type === 'PAYOUT' ? 'Payout' : 'Refund'} Policy</CModalTitle>
+          <CModalTitle>{editId ? 'Edit' : 'New'} {TYPE_LABEL[form.type]} Policy</CModalTitle>
         </CModalHeader>
         <CModalBody>
           <CForm className="d-flex flex-column gap-3">
@@ -377,6 +426,30 @@ const PolicySettings = () => {
                   {jsonErrors.nonVerifiedMilestone && <div className="text-danger small mt-1">{jsonErrors.nonVerifiedMilestone}</div>}
                 </div>
               </>
+            )}
+
+            {/* PAYMENT_SCHEDULE-specific fields — reuses the same `milestones`
+                JSON column PAYOUT uses (schema convenience), just a
+                different vocabulary: participant installments, not payout
+                milestones. See generate-participant.ts's ParticipantInstallment. */}
+            {form.type === 'PAYMENT_SCHEDULE' && (
+              <div>
+                <CFormLabel className="small">
+                  Installments (JSON array, ascending position, sharePct summing to 1.0)
+                  <span className="text-muted ms-1 fw-normal">
+                    e.g. [{`{"position":0,"sharePct":0.3,"label":"Booking Amount","triggerKind":"BOOKING","triggerOffsetDays":0}`}]
+                  </span>
+                </CFormLabel>
+                <CFormTextarea
+                  size="sm" rows={6} value={form.milestones}
+                  onChange={(e) => { f('milestones', e.target.value); validateJson('milestones', e.target.value) }}
+                  style={{ fontFamily: 'monospace', fontSize: 12 }}
+                />
+                {jsonErrors.milestones && <div className="text-danger small mt-1">{jsonErrors.milestones}</div>}
+                <div className="text-muted small mt-1">
+                  triggerKind: BOOKING · TRIP_START · TRIP_END — see triggerDate() in generate-participant.ts for offset semantics.
+                </div>
+              </div>
             )}
 
             {/* REFUND-specific fields */}

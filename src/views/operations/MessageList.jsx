@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader,
@@ -25,15 +26,18 @@ const fetchConversations = async ({ limit, offset, isGroup, sortBy, sortOrder })
 }
 
 const MessageList = () => {
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [isGroup, setIsGroup] = useState('')
-  const [sortBy, setSortBy] = useState('lastMessageAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    isGroup: { default: '' },
+    sortBy: { default: 'lastMessageAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, isGroup, sortBy, sortOrder } = filters
   const [viewConv, setViewConv] = useState(null)
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => { setFilters({ sortBy: field, sortOrder: order, page: 1 }) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-conversations', { page, pageSize, isGroup, sortBy, sortOrder }],
@@ -60,7 +64,7 @@ const MessageList = () => {
         <CCardBody>
           <CRow className="mb-3 g-2">
             <CCol md={3}>
-              <CFormSelect size="sm" value={isGroup} onChange={(e) => { setIsGroup(e.target.value); setPage(1) }}>
+              <CFormSelect size="sm" value={isGroup} onChange={(e) => setFilters({ isGroup: e.target.value, page: 1 })}>
                 <option value="">All types</option>
                 <option value="true">Group chats</option>
                 <option value="false">Direct messages</option>
@@ -122,8 +126,8 @@ const MessageList = () => {
                 total={data.total}
                 page={page}
                 pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+                onPageChange={(p) => setFilters({ page: p })}
+                onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
               />
             </>
           )}

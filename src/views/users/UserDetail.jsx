@@ -92,6 +92,13 @@ const BOOKING_STATUS_COLOR = {
   CANCELLED: 'danger',
   WAITLISTED: 'info',
 }
+// BookingParticipant.status on a Payment row — separate from Payment.status
+// itself. A PG can cancel after paying without the payment being reversed
+// (that only happens via a Refund), so these two disagree often enough that
+// both need to be visible side by side on the Payments tab.
+const PAYMENT_BOOKING_STATUS_COLOR = {
+  PENDING: 'warning', SUCCESS: 'success', CANCELLED: 'dark', FAILED: 'danger', REJECTED: 'secondary',
+}
 
 const ASSIGNMENT_STATUS_COLOR = {
   PENDING: 'warning',
@@ -1150,6 +1157,7 @@ const UserDetail = () => {
                             <CTableHeaderCell>Total</CTableHeaderCell>
                             <CTableHeaderCell>Method</CTableHeaderCell>
                             <CTableHeaderCell>Status</CTableHeaderCell>
+                            <CTableHeaderCell>Booking Status</CTableHeaderCell>
                             <CTableHeaderCell>Date</CTableHeaderCell>
                             <CTableHeaderCell></CTableHeaderCell>
                           </CTableRow>
@@ -1190,6 +1198,15 @@ const UserDetail = () => {
                                 <CBadge color={PAYMENT_STATUS_COLOR[p.status] || 'secondary'}>
                                   {p.status}
                                 </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                {p.participant?.status ? (
+                                  <CBadge color={PAYMENT_BOOKING_STATUS_COLOR[p.participant.status] || 'secondary'}>
+                                    {p.participant.status}
+                                  </CBadge>
+                                ) : (
+                                  <span className="text-muted small">-</span>
+                                )}
                               </CTableDataCell>
                               <CTableDataCell className="small text-muted">
                                 {fmtDate(p.createdAt)}

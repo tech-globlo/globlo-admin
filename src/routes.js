@@ -29,6 +29,7 @@ const PayoutList = React.lazy(() => import('./views/finance/PayoutList'))
 const PayoutDetail = React.lazy(() => import('./views/finance/PayoutDetail'))
 const PayoutSchedule = React.lazy(() => import('./views/finance/PayoutSchedule'))
 const PaymentList = React.lazy(() => import('./views/finance/PaymentList'))
+const PaymentSchedule = React.lazy(() => import('./views/finance/PaymentSchedule'))
 const RefundList = React.lazy(() => import('./views/finance/RefundList'))
 const DiscountList = React.lazy(() => import('./views/finance/DiscountList'))
 const RefundDetail = React.lazy(() => import('./views/finance/RefundDetail'))
@@ -44,7 +45,7 @@ const BroadcastList = React.lazy(() => import('./views/operations/BroadcastList'
 const ReviewList = React.lazy(() => import('./views/operations/ReviewList'))
 const MessageList = React.lazy(() => import('./views/operations/MessageList'))
 
-// Jungle Mode
+// Safari Mode
 const SafariSessions = React.lazy(() => import('./views/jungle/SafariSessions'))
 const SafariSessionDetail = React.lazy(() => import('./views/jungle/SafariSessionDetail'))
 const SpeciesList = React.lazy(() => import('./views/jungle/SpeciesList'))
@@ -104,6 +105,7 @@ export const routes = [
   { path: '/payments/refunds/:id', name: 'Refund Detail', element: RefundDetail },
   { path: '/payments/refunds', name: 'Refunds', element: RefundList },
   { path: '/payments/coupons', name: 'Coupons', element: DiscountList },
+  { path: '/payments/schedule', name: 'Payment Schedule', element: PaymentSchedule },
   { path: '/payments/:id', name: 'Payment Detail', element: PaymentDetail },
   { path: '/payments', name: 'Payments', element: PaymentList },
   {
@@ -125,8 +127,8 @@ export const routes = [
   { path: '/reviews', name: 'Reviews', element: ReviewList },
   { path: '/messages', name: 'Messages', element: MessageList },
 
-  // Jungle Mode
-  { path: '/jungle-mode', name: 'Jungle Mode', element: SafariSessions },
+  // Safari Mode
+  { path: '/jungle-mode', name: 'Safari Mode', element: SafariSessions },
   { path: '/jungle-mode/:id', name: 'Session Detail', element: SafariSessionDetail },
   { path: '/species', name: 'Species', element: SpeciesList },
 

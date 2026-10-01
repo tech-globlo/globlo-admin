@@ -1,6 +1,7 @@
-﻿﻿import React, { useState } from 'react'
+﻿﻿import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import {
   CCard,
   CCardBody,
@@ -68,18 +69,19 @@ const fetchCaseStats = async () => {
 
 const CaseList = () => {
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [status, setStatus] = useState('')
-  const [priority, setPriority] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    status: { default: '' },
+    priority: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, status, priority, sortBy, sortOrder } = filters
   const offset = (page - 1) * pageSize
 
   const handleSort = (field, order) => {
-    setSortBy(field)
-    setSortOrder(order)
-    setPage(1)
+    setFilters({ sortBy: field, sortOrder: order, page: 1 })
   }
 
   const { data, isLoading, isError } = useQuery({
@@ -123,8 +125,7 @@ const CaseList = () => {
                 }}
                 onClick={() => {
                   if (s) {
-                    setStatus(status === s ? '' : s)
-                    setPage(1)
+                    setFilters({ status: status === s ? '' : s, page: 1 })
                   }
                 }}
               >
@@ -145,10 +146,7 @@ const CaseList = () => {
             <CFormSelect
               size="sm"
               value={status}
-              onChange={(e) => {
-                setStatus(e.target.value)
-                setPage(1)
-              }}
+              onChange={(e) => setFilters({ status: e.target.value, page: 1 })}
             >
                       <option value="">All statuses</option>
               <option value="OPEN">Open</option>
@@ -162,10 +160,7 @@ const CaseList = () => {
             <CFormSelect
               size="sm"
               value={priority}
-              onChange={(e) => {
-                setPriority(e.target.value)
-                setPage(1)
-              }}
+              onChange={(e) => setFilters({ priority: e.target.value, page: 1 })}
             >
               <option value="">All priorities</option>
               <option value="CRITICAL">Critical</option>
@@ -271,10 +266,9 @@ const CaseList = () => {
               total={data.total}
               page={page}
               pageSize={pageSize}
-              onPageChange={setPage}
+              onPageChange={(p) => setFilters({ page: p })}
               onPageSizeChange={(s) => {
-                setPageSize(s)
-                setPage(1)
+                setFilters({ pageSize: s, page: 1 })
               }}
             />
           </>

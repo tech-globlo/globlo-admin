@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader, CCol, CRow,
@@ -51,13 +52,19 @@ const EMPTY_FORM = {
 
 const SpeciesList = () => {
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [search, setSearch] = useState('')
-  const [taxonGroup, setTaxonGroup] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [sortBy, setSortBy] = useState('')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    search: { default: '' },
+    taxonGroup: { default: '' },
+    sortBy: { default: '' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, search, taxonGroup, sortBy, sortOrder } = filters
+  // Typing buffer only — not URL-synced itself, it initializes from the
+  // already-persisted `search` value below so it's still correct on
+  // remount, without needing to sync every keystroke to the URL.
+  const [searchInput, setSearchInput] = useState(search)
   const [editModal, setEditModal] = useState(false)
   const [detailModal, setDetailModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -65,7 +72,7 @@ const SpeciesList = () => {
   const [form, setForm] = useState(EMPTY_FORM)
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => { setFilters({ sortBy: field, sortOrder: order, page: 1 }) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-species', { page, pageSize, search, taxonGroup, sortBy, sortOrder }],
@@ -128,11 +135,11 @@ const SpeciesList = () => {
                 size="sm" placeholder="Search name."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setPage(1) } }}
+                onKeyDown={(e) => { if (e.key === 'Enter') setFilters({ search: searchInput, page: 1 }) }}
               />
             </CCol>
             <CCol md={3}>
-              <CFormSelect size="sm" value={taxonGroup} onChange={(e) => { setTaxonGroup(e.target.value); setPage(1) }}>
+              <CFormSelect size="sm" value={taxonGroup} onChange={(e) => setFilters({ taxonGroup: e.target.value, page: 1 })}>
                 <option value="">All groups</option>
                 {['MAMMAL','BIRD','REPTILE','AMPHIBIAN','INSECT','OTHER'].map((g) => (
                   <option key={g} value={g}>{g}</option>
@@ -198,8 +205,8 @@ const SpeciesList = () => {
                 total={data.total}
                 page={page}
                 pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+                onPageChange={(p) => setFilters({ page: p })}
+                onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
               />
             </>
           )}
