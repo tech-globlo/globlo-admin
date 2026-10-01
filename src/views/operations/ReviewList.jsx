@@ -115,9 +115,10 @@ const ReviewList = () => {
                 <CTableRow>
                   <CTableHeaderCell style={{ width: 48 }}>Sr No</CTableHeaderCell>
                   <CTableHeaderCell>Reviewer</CTableHeaderCell>
-                  <CTableHeaderCell>Subject</CTableHeaderCell>
+                  <CTableHeaderCell>Subject (Trip/User/Destination/Service)</CTableHeaderCell>
                   <SortableHeader field="rating" label="Rating" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>Comment</CTableHeaderCell>
+                  <CTableHeaderCell style={{ width: 56 }}>Photo</CTableHeaderCell>
                   <CTableHeaderCell>Flags</CTableHeaderCell>
                   <SortableHeader field="createdAt" label="Date" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>Visibility</CTableHeaderCell>
@@ -132,7 +133,13 @@ const ReviewList = () => {
                       <div className="small text-muted">{r.reviewer?.email}</div>
                     </CTableDataCell>
                     <CTableDataCell className="small">
-                      {r.trip?.title || r.destination?.name || r.reviewedUser?.name || '-'}
+                      {r.trip?.title
+                        || r.destination?.name
+                        || r.reviewedUser?.name
+                        || (r.serviceDetails
+                          ? `${r.serviceDetails.title} (${r.serviceDetails.serviceType})${r.serviceDetails.serviceProviderUser ? ` — ${r.serviceDetails.serviceProviderUser.name}` : ''}`
+                          : null)
+                        || '-'}
                     </CTableDataCell>
                     <CTableDataCell>
                       <CBadge color="warning" textColor="dark">
@@ -144,6 +151,22 @@ const ReviewList = () => {
                       style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     >
                       {r.comment || '-'}
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      {r.thumbUrl ? (
+                        <img
+                          src={r.thumbUrl}
+                          alt=""
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }}
+                        />
+                      ) : (
+                        <div
+                          className="text-muted small d-flex align-items-center justify-content-center"
+                          style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--cui-tertiary-bg)' }}
+                        >
+                          -
+                        </div>
+                      )}
                     </CTableDataCell>
                     <CTableDataCell>
                       <div className="d-flex gap-1 flex-wrap">

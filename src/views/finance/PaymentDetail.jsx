@@ -213,7 +213,33 @@ const PaymentDetail = () => {
   } else {
     breakdownRows.push(['Platform Fee', fmt(payment.platformFeeMinor)])
   }
-  breakdownRows.push(['GST on Platform Fee', fmt(payment.taxAmountMinor)])
+  // Frozen CGST/SGST/IGST split (see Payment model comments) — only one
+  // pair is ever non-null (same-state → CGST+SGST, inter-state → IGST), so
+  // show exactly that split instead of a generic "GST on Platform Fee"
+  // total sitting next to it as a confusing duplicate of the same number.
+  // Falls back to the plain total only for payments that predate this split
+  // being captured (all three null), so old data doesn't go silent.
+  const hasPlatformFeeGstSplit =
+    payment.platformFeeCgstMinor != null || payment.platformFeeSgstMinor != null || payment.platformFeeIgstMinor != null
+  if (hasPlatformFeeGstSplit) {
+    if (payment.platformFeeCgstMinor != null) breakdownRows.push(['CGST', fmt(payment.platformFeeCgstMinor)])
+    if (payment.platformFeeSgstMinor != null) breakdownRows.push(['SGST', fmt(payment.platformFeeSgstMinor)])
+    if (payment.platformFeeIgstMinor != null) breakdownRows.push(['IGST', fmt(payment.platformFeeIgstMinor)])
+  } else {
+    breakdownRows.push(['GST on Platform Fee', fmt(payment.taxAmountMinor)])
+  }
+
+  // GST Details — same frozen snapshot, but the trip-fee (tour operator)
+  // side of it rather than the platform-fee side above. Same rule: only the
+  // applicable pair is shown, never both with a "-" placeholder for the one
+  // that doesn't apply.
+  const gstDetailRows = [
+    ['Place of Supply', payment.customerStateName ? `${payment.customerStateName} (${payment.customerStateCode})` : '-'],
+    ['GST Rate (Trip Fee)', payment.tourOperatorTaxRate != null ? `${(payment.tourOperatorTaxRate * 100).toFixed(2)}%` : '-'],
+  ]
+  if (payment.tourOperatorCgstMinor != null) gstDetailRows.push(['CGST (Trip Fee)', fmt(payment.tourOperatorCgstMinor)])
+  if (payment.tourOperatorSgstMinor != null) gstDetailRows.push(['SGST (Trip Fee)', fmt(payment.tourOperatorSgstMinor)])
+  if (payment.tourOperatorIgstMinor != null) gstDetailRows.push(['IGST (Trip Fee)', fmt(payment.tourOperatorIgstMinor)])
 
   // Razorpay's own cut of the transaction, deducted from Globlo's
   // settlement — never charged to the customer, so it's shown as its own
@@ -284,6 +310,25 @@ const PaymentDetail = () => {
                     <span className="fw-semibold">{fmt(payment.refundedAmountMinor)}</span>
                   </div>
                 )}
+              </div>
+
+              {/* GST Details — frozen snapshot from capture time (see
+                  Payment model comments), never recomputed live against
+                  whatever TaxPolicy rate or profile address is current now. */}
+              <div className="small fw-bold text-uppercase text-muted mb-1" style={{ letterSpacing: 1, fontSize: 10 }}>
+                GST Details
+              </div>
+              <div className="border rounded overflow-hidden mb-3">
+                {gstDetailRows.map(([label, value], i) => (
+                  <div
+                    key={label}
+                    className="d-flex justify-content-between px-3 py-2 small"
+                    style={i < gstDetailRows.length - 1 ? { borderBottom: '1px solid var(--cui-border-color)' } : undefined}
+                  >
+                    <span className="text-muted">{label}</span>
+                    <span className="fw-semibold">{value}</span>
+                  </div>
+                ))}
               </div>
 
               {/* Visually distinct — never part of "Customer Paid" or Total
