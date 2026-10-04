@@ -9,6 +9,7 @@ const ServiceDetail = React.lazy(() => import('./views/users/ServiceDetail'))
 const SpVerification = React.lazy(() => import('./views/users/SpVerification'))
 const VerificationDocuments = React.lazy(() => import('./views/users/VerificationDocuments'))
 const SubscriberList = React.lazy(() => import('./views/users/SubscriberList'))
+const ReferralList = React.lazy(() => import('./views/users/ReferralList'))
 
 // Destinations
 const DestinationList = React.lazy(() => import('./views/destinations/DestinationList'))
@@ -86,6 +87,7 @@ export const routes = [
     element: VerificationDocuments,
   },
   { path: '/subscribers', name: 'Subscribers', element: SubscriberList },
+  { path: '/referrals', name: 'Referrals', element: ReferralList },
 
   // Destinations
   { path: '/destinations', name: 'Destinations', element: DestinationList },
