@@ -77,8 +77,8 @@ const ReviewList = () => {
         <CButton size="sm" color="secondary" onClick={() => setVisibilityConfirm(null)}>
           Cancel
         </CButton>
-        <CButton size="sm" color="warning" onClick={confirmVisibility} disabled={updateMut.isLoading}>
-          {updateMut.isLoading ? <CSpinner size="sm" /> : 'Yes, change it'}
+        <CButton size="sm" color="warning" onClick={confirmVisibility} disabled={updateMut.isPending}>
+          {updateMut.isPending ? <CSpinner size="sm" /> : 'Yes, change it'}
         </CButton>
       </CModalFooter>
     </CModal>
@@ -182,7 +182,7 @@ const ReviewList = () => {
                         color={r.isPublic ? 'success' : 'outline-secondary'}
                         title={r.isPublic ? 'Make private' : 'Make public'}
                         onClick={() => setVisibilityConfirm({ id: r.id, currentValue: r.isPublic })}
-                        disabled={updateMut.isLoading}
+                        disabled={updateMut.isPending}
                       >
                         <CIcon icon={r.isPublic ? cilCheckCircle : cilBan} size="sm" />
                       </CButton>

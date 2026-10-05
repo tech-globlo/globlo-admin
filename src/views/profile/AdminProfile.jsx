@@ -230,7 +230,7 @@ const AdminProfile = () => {
                           size="sm"
                           color="outline-secondary"
                           onClick={handleInfoCancel}
-                          disabled={updateMut.isLoading}
+                          disabled={updateMut.isPending}
                         >
                           <CIcon icon={cilX} className="me-1" size="sm" />
                           Cancel
@@ -239,9 +239,9 @@ const AdminProfile = () => {
                           size="sm"
                           color="primary"
                           onClick={handleInfoSave}
-                          disabled={updateMut.isLoading}
+                          disabled={updateMut.isPending}
                         >
-                          {updateMut.isLoading ? (
+                          {updateMut.isPending ? (
                             <CSpinner size="sm" className="me-1" />
                           ) : (
                             <CIcon icon={cilCheck} className="me-1" size="sm" />
@@ -416,13 +416,13 @@ const AdminProfile = () => {
                       size="sm"
                       className="mt-1"
                       disabled={
-                        pwMut.isLoading ||
+                        pwMut.isPending ||
                         !pwForm.oldPassword ||
                         !pwForm.newPassword ||
                         !pwForm.retypePassword
                       }
                     >
-                      {pwMut.isLoading ? (
+                      {pwMut.isPending ? (
                         <CSpinner size="sm" className="me-1" />
                       ) : (
                         <CIcon icon={cilLockLocked} className="me-1" size="sm" />

@@ -381,8 +381,8 @@ const SpeciesList = () => {
         </CModalBody>
         <CModalFooter>
           <CButton color="secondary" onClick={() => setEditModal(false)}>Cancel</CButton>
-          <CButton color="primary" onClick={handleSave} disabled={saveMut.isLoading || !form.commonName}>
-            {saveMut.isLoading ? <CSpinner size="sm" /> : 'Save'}
+          <CButton color="primary" onClick={handleSave} disabled={saveMut.isPending || !form.commonName}>
+            {saveMut.isPending ? <CSpinner size="sm" /> : 'Save'}
           </CButton>
         </CModalFooter>
       </CModal>

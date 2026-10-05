@@ -19,6 +19,34 @@ const USER_TYPE_LABEL = {
   TRIP_MANAGER: 'Trip Manager',
 }
 
+const STATUS_BADGE = {
+  PENDING: { color: 'warning', label: 'Pending' },
+  CONTACTED: { color: 'info', label: 'Contacted' },
+  REJECTED: { color: 'danger', label: 'Rejected' },
+  CONVERTED: { color: 'success', label: 'Converted' },
+}
+
+// Which actions a row offers, by its current status. CONVERTED rows have none
+// and can never be selected.
+const ROW_ACTIONS = {
+  PENDING: ['CONTACT', 'REJECT', 'CONVERT'],
+  CONTACTED: ['REJECT', 'CONVERT'],
+  REJECTED: ['CONTACT', 'CONVERT'],
+  CONVERTED: [],
+}
+
+const ACTION_LABEL = {
+  CONTACT: 'Contact',
+  REJECT: 'Reject',
+  CONVERT: 'Convert',
+}
+
+const ACTION_DONE_MESSAGE = {
+  CONTACT: 'marked as contacted.',
+  REJECT: 'rejected.',
+  CONVERT: 'converted. Login credentials have been sent.',
+}
+
 const fetchSubscribers = async ({ limit, offset, search, status, userType, sortBy, sortOrder }) => {
   const params = new URLSearchParams({ limit, offset })
   if (search) params.set('search', search)
@@ -41,14 +69,12 @@ const SubscriberList = () => {
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('desc')
   const [selectedIds, setSelectedIds] = useState([])
-  // { id } (single) or { ids } (bulk) while waiting on the admin's yes/no
+  const [bulkAction, setBulkAction] = useState('')
+  // { id } while waiting on the admin's yes/no for a single-row convert
   const [blockConfirm, setBlockConfirm] = useState(null)
+  // Result of the last action: { success } and/or { skipped: [{ id, reason }] }
+  const [report, setReport] = useState(null)
   const [actionError, setActionError] = useState(null)
-  const [actionSuccess, setActionSuccess] = useState(null)
-  // Which single row's "Convert" button is in flight — convertOne.isLoading
-  // alone can't tell rows apart, so without this every row's button would
-  // show a spinner at once.
-  const [convertingId, setConvertingId] = useState(null)
 
   const offset = (page - 1) * pageSize
 
@@ -69,25 +95,23 @@ const SubscriberList = () => {
     placeholderData: (prev) => prev,
   })
 
-  const updateStatus = useMutation({
-    mutationFn: ({ id, status }) => api.patch(`/api/admin/subscribers/${id}`, { status }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-subscribers'] }),
+  // Contact / Reject / bulk Convert all go through one endpoint; the backend
+  // skips rows where the action doesn't apply and reports them back.
+  const applyAction = useMutation({
+    mutationFn: ({ action, ids }) => api.post('/api/admin/subscribers/apply', { action, ids }),
   })
 
   const convertOne = useMutation({
     mutationFn: ({ id, confirmBlock }) => api.post(`/api/admin/subscribers/${id}/convert`, { confirmBlock }),
   })
 
-  const convertBulk = useMutation({
-    mutationFn: ({ ids }) => api.post('/api/admin/subscribers/convert-bulk', { ids }),
-  })
-
   const subscribers = data?.subscribers ?? []
-  const convertibleIds = subscribers.filter((s) => s.status !== 'CONVERTED').map((s) => s.id)
-  const allConvertibleSelected = convertibleIds.length > 0 && convertibleIds.every((id) => selectedIds.includes(id))
+  const nameById = Object.fromEntries(subscribers.map((s) => [s.id, s.name]))
+  const selectableIds = subscribers.filter((s) => s.status !== 'CONVERTED').map((s) => s.id)
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.includes(id))
 
   const toggleSelectAll = () => {
-    setSelectedIds(allConvertibleSelected ? [] : convertibleIds)
+    setSelectedIds(allSelected ? [] : selectableIds)
   }
   const toggleSelectOne = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -101,57 +125,60 @@ const SubscriberList = () => {
 
   const refreshList = () => qc.invalidateQueries({ queryKey: ['admin-subscribers'] })
 
-  const handleConvertOne = async (id) => {
-    setActionError(null)
-    setActionSuccess(null)
-    setConvertingId(id)
+  const clearReport = () => { setReport(null); setActionError(null) }
+
+  // Runs one action over a set of ids and turns the per-row results into the
+  // success line plus a list of skipped rows with their reasons.
+  const runApply = async (action, ids) => {
+    clearReport()
     try {
-      const res = await convertOne.mutateAsync({ id, confirmBlock: false })
-      if (res.data.data.requiresConfirmation) {
-        setBlockConfirm({ type: 'single', id, existingUserName: res.data.data.existingUserName })
-        return
-      }
-      setActionSuccess('Subscriber converted — login credentials have been sent.')
+      const res = await applyAction.mutateAsync({ action, ids })
+      const results = res.data.data.results
+      const done = results.filter((r) => r.outcome === 'updated' || r.outcome === 'converted')
+      const skipped = results
+        .filter((r) => r.outcome !== 'updated' && r.outcome !== 'converted')
+        .map((r) => ({
+          id: r.id,
+          reason: r.reason || (r.outcome === 'notFound' ? 'Subscriber not found' : 'Could not be processed'),
+        }))
+      setReport({
+        success: done.length > 0 ? `${done.length} subscriber${done.length === 1 ? ' was' : 's were'} ${ACTION_DONE_MESSAGE[action]}` : null,
+        skipped,
+      })
+      setSelectedIds([])
       refreshList()
     } catch (err) {
-      setActionError(err?.response?.data?.message || 'Failed to convert subscriber.')
-    } finally {
-      setConvertingId(null)
+      setActionError(err?.response?.data?.message || `Failed to ${ACTION_LABEL[action].toLowerCase()} subscribers.`)
     }
   }
 
-  const handleConvertSelected = async () => {
-    setActionError(null)
-    setActionSuccess(null)
+  const handleApply = () => {
+    if (!bulkAction || selectedIds.length === 0) return
+    runApply(bulkAction, selectedIds)
+    setBulkAction('')
+  }
+
+  const handleConvertOne = async (id) => {
+    clearReport()
     try {
-      const res = await convertBulk.mutateAsync({ ids: selectedIds })
-      const outcomes = res.data.data.results
-      const converted = outcomes.filter((r) => r.outcome === 'converted')
-      const needsConfirm = outcomes.filter((r) => r.outcome === 'requiresConfirmation')
-      setSelectedIds([])
+      const res = await convertOne.mutateAsync({ id, confirmBlock: false })
+      if (res.data.data.requiresConfirmation) {
+        setBlockConfirm({ id, existingUserName: res.data.data.existingUserName })
+        return
+      }
+      setReport({ success: `Subscriber ${ACTION_DONE_MESSAGE.CONVERT}`, skipped: [] })
       refreshList()
-      if (converted.length > 0) {
-        setActionSuccess(
-          `${converted.length} subscriber${converted.length === 1 ? '' : 's'} converted — login credentials have been sent.`,
-        )
-      }
-      if (needsConfirm.length > 0) {
-        setActionError(
-          `${needsConfirm.length} of ${outcomes.length} already have an account and were skipped — resolve them individually with "Convert".`,
-        )
-      }
     } catch (err) {
-      setActionError(err?.response?.data?.message || 'Failed to convert selected subscribers.')
+      setActionError(err?.response?.data?.message || 'Failed to convert subscriber.')
     }
   }
 
   const handleConfirmBlock = async () => {
     if (!blockConfirm) return
-    setActionError(null)
-    setActionSuccess(null)
+    clearReport()
     try {
       await convertOne.mutateAsync({ id: blockConfirm.id, confirmBlock: true })
-      setActionSuccess('Subscriber marked as blocked.')
+      setReport({ success: 'Subscriber marked as rejected. The existing account was not changed.', skipped: [] })
       refreshList()
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Failed to update subscriber.')
@@ -159,6 +186,11 @@ const SubscriberList = () => {
       setBlockConfirm(null)
     }
   }
+
+  // Spinner for one row's button only — the mutations are shared across rows.
+  const rowBusy = (id, action) => action === 'CONVERT'
+    ? convertOne.isPending && convertOne.variables?.id === id
+    : applyAction.isPending && applyAction.variables?.action === action && applyAction.variables?.ids?.includes(id)
 
   return (
     <>
@@ -174,8 +206,8 @@ const SubscriberList = () => {
       </CModalBody>
       <CModalFooter>
         <CButton size="sm" color="secondary" onClick={() => setBlockConfirm(null)}>Cancel</CButton>
-        <CButton size="sm" color="danger" onClick={handleConfirmBlock} disabled={convertOne.isLoading}>
-          {convertOne.isLoading ? <CSpinner size="sm" /> : 'Yes, block it'}
+        <CButton size="sm" color="danger" onClick={handleConfirmBlock} disabled={convertOne.isPending}>
+          {convertOne.isPending ? <CSpinner size="sm" /> : 'Yes, block it'}
         </CButton>
       </CModalFooter>
     </CModal>
@@ -227,27 +259,56 @@ const SubscriberList = () => {
           </CCol>
         </CRow>
 
-        {actionSuccess && (
-          <CAlert color="success" dismissible onClose={() => setActionSuccess(null)}>
-            {actionSuccess}
+        {report?.success && (
+          <CAlert color="success" dismissible onClose={clearReport}>
+            {report.success}
+          </CAlert>
+        )}
+        {report?.skipped.length > 0 && (
+          <CAlert color="warning" dismissible onClose={clearReport}>
+            <div className="fw-semibold mb-1">
+              {report.skipped.length} skipped
+            </div>
+            <ul className="small mb-0 ps-3">
+              {report.skipped.map((s) => (
+                <li key={s.id}>{nameById[s.id] || 'Subscriber'}: {s.reason}</li>
+              ))}
+            </ul>
           </CAlert>
         )}
         {actionError && (
-          <CAlert color="warning" dismissible onClose={() => setActionError(null)}>
+          <CAlert color="danger" dismissible onClose={() => setActionError(null)}>
             {actionError}
           </CAlert>
         )}
 
         {selectedIds.length > 0 && (
-          <div className="d-flex align-items-center gap-2 mb-3 p-2 border rounded bg-light">
+          <div className="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 border rounded bg-light">
             <span className="small fw-semibold">{selectedIds.length} selected</span>
+            <CFormSelect
+              size="sm"
+              style={{ width: 170 }}
+              value={bulkAction}
+              onChange={(e) => setBulkAction(e.target.value)}
+              disabled={applyAction.isPending}
+            >
+              <option value="">Choose action</option>
+              <option value="CONTACT">Contact</option>
+              <option value="REJECT">Reject</option>
+              <option value="CONVERT">Convert</option>
+            </CFormSelect>
             <CButton
               size="sm"
-              color="success"
-              onClick={handleConvertSelected}
-              disabled={convertBulk.isLoading}
+              color="primary"
+              onClick={handleApply}
+              disabled={!bulkAction || applyAction.isPending}
             >
-              {convertBulk.isLoading ? <CSpinner size="sm" /> : `Convert ${selectedIds.length}`}
+              {applyAction.isPending ? (
+                <>
+                  <CSpinner size="sm" className="me-1" />
+                  Applying…
+                </>
+              ) : 'Apply'}
             </CButton>
             <CButton size="sm" color="link" onClick={() => setSelectedIds([])}>Clear</CButton>
           </div>
@@ -267,8 +328,8 @@ const SubscriberList = () => {
                 <CTableRow>
                   <CTableHeaderCell style={{ width: 36 }}>
                     <CFormCheck
-                      checked={allConvertibleSelected}
-                      disabled={convertibleIds.length === 0}
+                      checked={allSelected}
+                      disabled={selectableIds.length === 0}
                       onChange={toggleSelectAll}
                     />
                   </CTableHeaderCell>
@@ -283,11 +344,12 @@ const SubscriberList = () => {
               </CTableHead>
               <CTableBody>
                 {subscribers.map((s, idx) => {
-                  const isConverted = s.status === 'CONVERTED'
+                  const badge = STATUS_BADGE[s.status] || { color: 'secondary', label: s.status }
+                  const actions = ROW_ACTIONS[s.status] || []
                   return (
                     <CTableRow key={s.id}>
                       <CTableDataCell>
-                        {!isConverted && (
+                        {actions.length > 0 && (
                           <CFormCheck
                             checked={selectedIds.includes(s.id)}
                             onChange={() => toggleSelectOne(s.id)}
@@ -307,34 +369,25 @@ const SubscriberList = () => {
                       </CTableDataCell>
                       <CTableDataCell className="small text-muted">{fmtDateTime(s.createdAt)}</CTableDataCell>
                       <CTableDataCell>
-                        <CFormSelect
-                          size="sm"
-                          value={s.status}
-                          disabled={updateStatus.isLoading || isConverted}
-                          onChange={(e) => updateStatus.mutate({ id: s.id, status: e.target.value })}
-                          style={{ width: 140 }}
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="CONTACTED">Contacted</option>
-                          <option value="REJECTED">Rejected</option>
-                          {/* CONVERTED is never a plain status pick — only the
-                              "Convert" action (which actually creates the
-                              account) can set it. */}
-                          {isConverted && <option value="CONVERTED">Converted</option>}
-                        </CFormSelect>
+                        <CBadge color={badge.color}>{badge.label}</CBadge>
                       </CTableDataCell>
                       <CTableDataCell>
-                        {!isConverted && (
-                          <CButton
-                            size="sm"
-                            color="success"
-                            variant="outline"
-                            onClick={() => handleConvertOne(s.id)}
-                            disabled={convertOne.isLoading || convertBulk.isLoading}
-                          >
-                            {convertingId === s.id ? <CSpinner size="sm" /> : 'Convert'}
-                          </CButton>
-                        )}
+                        <div className="d-flex flex-wrap gap-1">
+                          {actions.map((action) => (
+                            <CButton
+                              key={action}
+                              size="sm"
+                              variant="outline"
+                              color={action === 'CONVERT' ? 'success' : action === 'REJECT' ? 'danger' : 'primary'}
+                              disabled={applyAction.isPending || convertOne.isPending}
+                              onClick={() => (action === 'CONVERT'
+                                ? handleConvertOne(s.id)
+                                : runApply(action, [s.id]))}
+                            >
+                              {rowBusy(s.id, action) ? <CSpinner size="sm" /> : ACTION_LABEL[action]}
+                            </CButton>
+                          ))}
+                        </div>
                       </CTableDataCell>
                     </CTableRow>
                   )

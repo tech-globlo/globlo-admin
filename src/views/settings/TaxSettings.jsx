@@ -303,9 +303,9 @@ const handleSave = () => {
             <CButton
               color="primary"
               onClick={handleSave}
-              disabled={createMut.isLoading || !form.rate || !form.effectiveFrom || !form.appliesTo}
+              disabled={createMut.isPending || !form.rate || !form.effectiveFrom || !form.appliesTo}
             >
-              {createMut.isLoading ? <CSpinner size="sm" /> : 'Create'}
+              {createMut.isPending ? <CSpinner size="sm" /> : 'Create'}
             </CButton>
           </div>
         </CModalFooter>

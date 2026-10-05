@@ -327,8 +327,8 @@ const HotspotList = () => {
         </CModalBody>
         <CModalFooter>
           <CButton color="secondary" onClick={closeModal}>Cancel</CButton>
-          <CButton color="primary" onClick={handleSave} disabled={saveMut.isLoading}>
-            {saveMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+          <CButton color="primary" onClick={handleSave} disabled={saveMut.isPending}>
+            {saveMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             {editing ? 'Update' : 'Add'}
           </CButton>
         </CModalFooter>

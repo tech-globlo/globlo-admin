@@ -387,13 +387,13 @@ const TripDetail = () => {
             size="sm"
             color="outline-secondary"
             onClick={handleCancel}
-            disabled={saveMut.isLoading}
+            disabled={saveMut.isPending}
           >
             <CIcon icon={cilX} className="me-1" size="sm" />
             Cancel
           </CButton>
-          <CButton size="sm" color="primary" onClick={handleSave} disabled={saveMut.isLoading}>
-            {saveMut.isLoading ? (
+          <CButton size="sm" color="primary" onClick={handleSave} disabled={saveMut.isPending}>
+            {saveMut.isPending ? (
               <CSpinner size="sm" className="me-1" />
             ) : (
               <CIcon icon={cilCheck} className="me-1" size="sm" />

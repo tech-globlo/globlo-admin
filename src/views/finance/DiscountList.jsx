@@ -174,7 +174,7 @@ const DiscountList = () => {
     else createMut.mutate(payload)
   }
 
-  const isSaving = createMut.isLoading || updateMut.isLoading
+  const isSaving = createMut.isPending || updateMut.isPending
   const canSave =
     form.code.trim() &&
     form.validFrom &&
@@ -259,7 +259,7 @@ const DiscountList = () => {
                       </CTableDataCell>
                       <CTableDataCell className="small">{d.fundedBy?.replace(/_/g, ' ')}</CTableDataCell>
                       <CTableDataCell>
-                        {toggleActiveMut.isLoading && toggleActiveMut.variables?.id === d.id ? (
+                        {toggleActiveMut.isPending && toggleActiveMut.variables?.id === d.id ? (
                           <CSpinner size="sm" />
                         ) : (
                           <CBadge
@@ -287,7 +287,7 @@ const DiscountList = () => {
                           </CButton>
                           <CButton
                             size="sm" color="outline-danger"
-                            disabled={deleteMut.isLoading && deleteMut.variables === d.id}
+                            disabled={deleteMut.isPending && deleteMut.variables === d.id}
                             title={d.redemptionCount > 0 ? 'Redeemed coupons can only be deactivated' : 'Delete'}
                             onClick={() => {
                               if (d.redemptionCount > 0) {
@@ -297,7 +297,7 @@ const DiscountList = () => {
                               if (window.confirm(`Delete coupon "${d.code}"?`)) deleteMut.mutate(d.id)
                             }}
                           >
-                            {deleteMut.isLoading && deleteMut.variables === d.id
+                            {deleteMut.isPending && deleteMut.variables === d.id
                               ? <CSpinner size="sm" />
                               : <CIcon icon={cilTrash} size="sm" />}
                           </CButton>
