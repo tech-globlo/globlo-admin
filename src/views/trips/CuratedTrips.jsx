@@ -92,7 +92,7 @@ const CuratedTrips = () => {
                       color="outline-danger"
                       title="Remove from featured"
                       onClick={() => toggleMut.mutate({ id: t.id, featured: false })}
-                      disabled={toggleMut.isLoading}
+                      disabled={toggleMut.isPending}
                     >
                       <CIcon icon={cilBan} size="sm" />
                     </CButton>

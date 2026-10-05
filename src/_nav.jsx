@@ -26,6 +26,7 @@ import {
   cilImage,
   cilHistory,
   cilBolt,
+  cilShareAlt,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
@@ -61,6 +62,12 @@ const _nav = [
     name: 'Subscribers',
     to: '/subscribers',
     icon: <CIcon icon={cilBadge} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Referrals',
+    to: '/referrals',
+    icon: <CIcon icon={cilShareAlt} customClassName="nav-icon" />,
   },
 
   { component: CNavTitle, name: 'Content' },

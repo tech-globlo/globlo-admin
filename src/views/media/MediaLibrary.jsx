@@ -446,11 +446,11 @@ const MediaLibrary = () => {
 
             {selected.size > 0 && (
               <>
-                <CButton color="danger" size="sm" onClick={handleBulkDelete} disabled={bulkDeleteMut.isLoading}>
-                  {bulkDeleteMut.isLoading ? <CSpinner size="sm" className="me-1" style={{ color: '#fff' }} /> : <CIcon icon={cilTrash} className="me-1" size="sm" style={{ color: '#fff' }} />}
+                <CButton color="danger" size="sm" onClick={handleBulkDelete} disabled={bulkDeleteMut.isPending}>
+                  {bulkDeleteMut.isPending ? <CSpinner size="sm" className="me-1" style={{ color: '#fff' }} /> : <CIcon icon={cilTrash} className="me-1" size="sm" style={{ color: '#fff' }} />}
                   Delete {selected.size} selected
                 </CButton>
-                <CButton color="secondary" size="sm" variant="outline" onClick={() => setSelected(new Set())} disabled={bulkDeleteMut.isLoading}>
+                <CButton color="secondary" size="sm" variant="outline" onClick={() => setSelected(new Set())} disabled={bulkDeleteMut.isPending}>
                   Clear selection
                 </CButton>
               </>
@@ -593,7 +593,7 @@ const MediaLibrary = () => {
         onClose={() => { setSidebarItem(null); document.body.style.overflow = '' }}
         onDelete={(id) => deleteMut.mutate(id)}
         onToggleApproval={(id, isApproved) => approvalMut.mutate({ id, isApproved })}
-        deleting={deleteMut.isLoading && deleteMut.variables === sidebarItem?.id}
+        deleting={deleteMut.isPending && deleteMut.variables === sidebarItem?.id}
       />
     </>
   )

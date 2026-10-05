@@ -241,8 +241,8 @@ const TripList = () => {
         </CModalBody>
         <CModalFooter>
           <CButton color="secondary" onClick={() => setActionTrip(null)}>Cancel</CButton>
-          <CButton color="primary" onClick={handleStatusUpdate} disabled={updateMut.isLoading}>
-            {updateMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+          <CButton color="primary" onClick={handleStatusUpdate} disabled={updateMut.isPending}>
+            {updateMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Update
           </CButton>
         </CModalFooter>

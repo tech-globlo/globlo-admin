@@ -317,16 +317,16 @@ const VerificationDocuments = () => {
             color="danger"
             variant="outline"
             onClick={() => handleDecision('REJECTED')}
-            disabled={mutation.isLoading}
+            disabled={mutation.isPending}
           >
             Reject
           </CButton>
           <CButton
             color="success"
             onClick={() => handleDecision('VERIFIED')}
-            disabled={mutation.isLoading}
+            disabled={mutation.isPending}
           >
-            {mutation.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            {mutation.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Verify
           </CButton>
         </CModalFooter>

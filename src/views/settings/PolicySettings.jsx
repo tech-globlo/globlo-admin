@@ -225,7 +225,7 @@ const PolicySettings = () => {
     else createMut.mutate(payload)
   }
 
-  const isSaving = createMut.isLoading || updateMut.isLoading
+  const isSaving = createMut.isPending || updateMut.isPending
 
   const PolicyTable = ({ policies, loading, error, type }) => (
     <>
@@ -293,10 +293,10 @@ const PolicySettings = () => {
                       <CButton size="sm" color="outline-primary" onClick={() => openEdit(p)}>Edit</CButton>
                       <CButton
                         size="sm" color="outline-danger"
-                        disabled={deleteMut.isLoading && deleteMut.variables === p.id}
+                        disabled={deleteMut.isPending && deleteMut.variables === p.id}
                         onClick={() => { if (window.confirm('Delete this policy?')) deleteMut.mutate(p.id) }}
                       >
-                        {deleteMut.isLoading && deleteMut.variables === p.id ? <CSpinner size="sm" /> : 'Del'}
+                        {deleteMut.isPending && deleteMut.variables === p.id ? <CSpinner size="sm" /> : 'Del'}
                       </CButton>
                     </div>
                   </CTableDataCell>

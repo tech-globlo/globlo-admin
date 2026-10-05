@@ -311,8 +311,8 @@ const PayoutList = () => {
           <CButton color="secondary" onClick={() => setActionPayout(null)}>
             Cancel
           </CButton>
-          <CButton color="primary" onClick={handleSubmit} disabled={updateMut.isLoading}>
-            {updateMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+          <CButton color="primary" onClick={handleSubmit} disabled={updateMut.isPending}>
+            {updateMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Update
           </CButton>
         </CModalFooter>

@@ -147,7 +147,7 @@ const DestinationList = () => {
                         color={d.isPopular ? 'warning' : 'outline-secondary'}
                         title={d.isPopular ? 'Mark as not popular' : 'Mark as popular'}
                         onClick={() => togglePopular.mutate({ id: d.id, isPopular: !d.isPopular })}
-                        disabled={togglePopular.isLoading}
+                        disabled={togglePopular.isPending}
                       >
                         <CIcon icon={cilBookmark} size="sm" />
                       </CButton>

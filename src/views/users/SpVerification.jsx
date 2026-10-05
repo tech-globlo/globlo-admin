@@ -239,8 +239,8 @@ const SpVerification = () => {
           <CButton color="secondary" onClick={() => setSelected(null)}>
             Cancel
           </CButton>
-          <CButton color="primary" onClick={handleSubmit} disabled={mutation.isLoading}>
-            {mutation.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+          <CButton color="primary" onClick={handleSubmit} disabled={mutation.isPending}>
+            {mutation.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Submit Decision
           </CButton>
         </CModalFooter>
