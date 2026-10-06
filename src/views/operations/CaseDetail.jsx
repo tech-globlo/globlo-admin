@@ -387,7 +387,7 @@ const CaseDetail = () => {
                 <CButton
                   size="sm"
                   color="primary"
-                  disabled={!reply.message.trim() || replyMut.isLoading}
+                  disabled={!reply.message.trim() || replyMut.isPending}
                   onClick={() =>
                     replyMut.mutate({
                       message: reply.message,
@@ -396,7 +396,7 @@ const CaseDetail = () => {
                     })
                   }
                 >
-                  {replyMut.isLoading ? (
+                  {replyMut.isPending ? (
                     <CSpinner size="sm" />
                   ) : (
                     <>
@@ -468,9 +468,9 @@ const CaseDetail = () => {
           <CButton
             color="primary"
             onClick={() => updateMut.mutate(form)}
-            disabled={updateMut.isLoading}
+            disabled={updateMut.isPending}
           >
-            {updateMut.isLoading ? <CSpinner size="sm" /> : 'Save'}
+            {updateMut.isPending ? <CSpinner size="sm" /> : 'Save'}
           </CButton>
         </CModalFooter>
       </CModal>
@@ -575,7 +575,7 @@ const CaseDetail = () => {
           </CButton>
           <CButton
             color="warning"
-            disabled={!bcast.title.trim() || !bcast.message.trim() || !bcast.expiresAt || broadcastMut.isLoading}
+            disabled={!bcast.title.trim() || !bcast.message.trim() || !bcast.expiresAt || broadcastMut.isPending}
             onClick={() =>
               broadcastMut.mutate({
                 title: bcast.title,
@@ -587,7 +587,7 @@ const CaseDetail = () => {
               })
             }
           >
-            {broadcastMut.isLoading ? <CSpinner size="sm" /> : (
+            {broadcastMut.isPending ? <CSpinner size="sm" /> : (
               <><CIcon icon={cilBell} size="sm" className="me-1" />Send Broadcast</>
             )}
           </CButton>

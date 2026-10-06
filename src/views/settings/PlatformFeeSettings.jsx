@@ -182,7 +182,7 @@ const PlatformFeeSettings = () => {
               <CTableBody>
                 {configs.map((cfg, idx) => {
                   const active = isActive(cfg)
-                  const activating = activateMut.isLoading && activateMut.variables === cfg.id
+                  const activating = activateMut.isPending && activateMut.variables === cfg.id
                   return (
                     <CTableRow key={cfg.id}>
                       <CTableDataCell className="small text-muted">{idx + 1}</CTableDataCell>
@@ -215,7 +215,7 @@ const PlatformFeeSettings = () => {
                           <CButton
                             size="sm"
                             color="outline-success"
-                            disabled={activateMut.isLoading}
+                            disabled={activateMut.isPending}
                             onClick={() => activateMut.mutate(cfg.id)}
                           >
                             {activating ? <CSpinner size="sm" /> : 'Set Active'}
@@ -313,9 +313,9 @@ const PlatformFeeSettings = () => {
             <CButton
               color="primary"
               onClick={handleSave}
-              disabled={createMut.isLoading || !form.rate || !form.effectiveFrom}
+              disabled={createMut.isPending || !form.rate || !form.effectiveFrom}
             >
-              {createMut.isLoading ? <CSpinner size="sm" /> : 'Create'}
+              {createMut.isPending ? <CSpinner size="sm" /> : 'Create'}
             </CButton>
           </div>
         </CModalFooter>

@@ -7,7 +7,7 @@ import {
   CRow, CCol,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilTrash, cilImage, cilX, cilViewModule, cilList } from '@coreui/icons'
+import { cilTrash, cilImage, cilFile, cilExternalLink, cilX, cilViewModule, cilList } from '@coreui/icons'
 import api from '../lib/api'
 import { fmtDate } from '../lib/dateUtils'
 
@@ -54,8 +54,13 @@ const MediaTile = ({ item, onClick, onDelete, deleting, showTypeLabel, brokenIds
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       ) : (
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isBroken ? '#dc3545' : '#666' }}>
-          <CIcon icon={cilImage} style={{ width: 28, height: 28 }} />
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: isBroken ? '#dc3545' : '#666' }}>
+          <CIcon icon={isBroken ? cilImage : cilFile} style={{ width: 28, height: 28 }} />
+          {!isBroken && (
+            <div style={{ fontSize: 10, marginTop: 4, textAlign: 'center', padding: '0 6px', wordBreak: 'break-all' }}>
+              {item.mimeType?.split('/')[1]?.toUpperCase() || 'FILE'}
+            </div>
+          )}
         </div>
       )}
 
@@ -78,8 +83,8 @@ const MediaTile = ({ item, onClick, onDelete, deleting, showTypeLabel, brokenIds
           disabled={deleting === item.id}
         >
           {deleting === item.id
-            ? <CSpinner size="sm" style={{ width: 10, height: 10 }} />
-            : <CIcon icon={cilTrash} style={{ width: 10, height: 10 }} />
+            ? <CSpinner size="sm" style={{ width: 10, height: 10, color: '#fff' }} />
+            : <CIcon icon={cilTrash} style={{ width: 10, height: 10, color: '#fff' }} />
           }
         </CButton>
       </div>
@@ -109,7 +114,7 @@ const MediaListRow = ({ item, onClick, onDelete, deleting, showTypeLabel, broken
             />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CIcon icon={cilImage} style={{ width: 18, height: 18, color: '#666' }} />
+              <CIcon icon={isBroken ? cilImage : cilFile} style={{ width: 18, height: 18, color: isBroken ? '#dc3545' : '#666' }} />
             </div>
           )}
         </div>
@@ -150,6 +155,8 @@ const MediaDetail = ({ item, onClose, onDelete, deleting, brokenIds }) => {
   if (!item) return null
   const isBroken = brokenIds.has(item.id)
   const isImage = item.mimeType?.startsWith('image/')
+  const isVideo = item.mimeType?.startsWith('video/')
+  const isPdf = item.mimeType === 'application/pdf'
   const filename = getFilename(item)
   const typeMeta = TYPE_META[item.type]
 
@@ -163,22 +170,39 @@ const MediaDetail = ({ item, onClose, onDelete, deleting, brokenIds }) => {
       </COffcanvasHeader>
       <COffcanvasBody>
         <CRow className="g-3">
-          {/* Left col — image preview */}
+          {/* Left col — preview */}
           <CCol md={6}>
-            <div style={{ background: '#111', borderRadius: 6, overflow: 'hidden', aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#111', borderRadius: 6, overflow: 'hidden', aspectRatio: isPdf ? '3 / 4' : '1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {isImage && !isBroken ? (
                 <img
                   src={item.url} alt={filename}
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
-              ) : item.mimeType?.startsWith('video/') ? (
+              ) : isVideo ? (
                 <video src={item.url} controls style={{ width: '100%', borderRadius: 4 }} />
+              ) : isPdf ? (
+                <iframe
+                  src={item.url}
+                  title={filename}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#666' }}>
-                  <CIcon icon={cilImage} style={{ width: 40, height: 40 }} />
+                  <CIcon icon={isBroken ? cilImage : cilFile} style={{ width: 40, height: 40 }} />
+                  {!isBroken && (
+                    <div className="small mt-1">{item.mimeType?.split('/')[1]?.toUpperCase() || 'FILE'}</div>
+                  )}
                 </div>
               )}
             </div>
+            {!isImage && (
+              <div className="mt-2 text-center">
+                <a href={item.url} target="_blank" rel="noopener noreferrer" className="small">
+                  <CIcon icon={cilExternalLink} className="me-1" size="sm" />
+                  Open {isPdf ? 'PDF' : isVideo ? 'video' : 'file'} in new tab
+                </a>
+              </div>
+            )}
             {typeMeta && (
               <div className="mt-2 text-center">
                 <CBadge color={typeMeta.color}>{typeMeta.label}</CBadge>
@@ -225,7 +249,7 @@ const MediaDetail = ({ item, onClose, onDelete, deleting, brokenIds }) => {
                 disabled={deleting === item.id}
                 onClick={() => window.confirm(`Delete "${filename}"?`) && onDelete(item.id)}
               >
-                {deleting === item.id ? <CSpinner size="sm" className="me-1" /> : <CIcon icon={cilTrash} className="me-1" size="sm" />}
+                {deleting === item.id ? <CSpinner size="sm" className="me-1" style={{ color: '#fff' }} /> : <CIcon icon={cilTrash} className="me-1" size="sm" style={{ color: '#fff' }} />}
                 Delete Permanently
               </CButton>
             </div>

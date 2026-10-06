@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react'
+﻿import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader, CCol, CRow,
@@ -19,6 +20,14 @@ const STATUS_COLOR = {
   REFUNDED: 'secondary', CANCELLED: 'dark', FAILED: 'danger',
 }
 
+// BookingParticipant.status — separate from Payment.status above. A PG can
+// cancel after paying without the payment itself being reversed (that only
+// happens via a Refund), so these two statuses regularly disagree and both
+// need to be visible side by side.
+const BOOKING_STATUS_COLOR = {
+  PENDING: 'warning', SUCCESS: 'success', CANCELLED: 'dark', FAILED: 'danger', REJECTED: 'secondary',
+}
+
 const fetchPayments = async ({ limit, offset, status, sortBy, sortOrder }) => {
   const params = new URLSearchParams({ limit, offset })
   if (status) params.set('status', status)
@@ -30,14 +39,17 @@ const fetchPayments = async ({ limit, offset, status, sortBy, sortOrder }) => {
 
 const PaymentList = () => {
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    statusFilter: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, statusFilter, sortBy, sortOrder } = filters
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => { setFilters({ sortBy: field, sortOrder: order, page: 1 }) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-payments', { page, pageSize, statusFilter, sortBy, sortOrder }],
@@ -54,7 +66,7 @@ const PaymentList = () => {
       <CCardBody>
         <CRow className="mb-3">
           <CCol md={3}>
-            <CFormSelect size="sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}>
+            <CFormSelect size="sm" value={statusFilter} onChange={(e) => setFilters({ statusFilter: e.target.value, page: 1 })}>
               <option value="">All statuses</option>
               {['PENDING', 'PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'CANCELLED', 'FAILED'].map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -78,6 +90,7 @@ const PaymentList = () => {
                   <CTableHeaderCell>Fee</CTableHeaderCell>
                   <CTableHeaderCell>Method</CTableHeaderCell>
                   <SortableHeader field="status" label="Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                  <CTableHeaderCell>Booking Status</CTableHeaderCell>
                   <CTableHeaderCell>Refunds</CTableHeaderCell>
                   <SortableHeader field="createdAt" label="Date" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>Action</CTableHeaderCell>
@@ -98,6 +111,15 @@ const PaymentList = () => {
                     <CTableDataCell>
                       <CBadge color={STATUS_COLOR[p.status] || 'secondary'}>{p.status}</CBadge>
                     </CTableDataCell>
+                    <CTableDataCell>
+                      {p.participant?.status ? (
+                        <CBadge color={BOOKING_STATUS_COLOR[p.participant.status] || 'secondary'}>
+                          {p.participant.status}
+                        </CBadge>
+                      ) : (
+                        <span className="text-muted small">-</span>
+                      )}
+                    </CTableDataCell>
                     <CTableDataCell className="small">{p.refunds?.length || 0}</CTableDataCell>
                     <CTableDataCell className="small text-muted">
                       {fmtDate(p.createdAt)}
@@ -116,8 +138,8 @@ const PaymentList = () => {
               total={data.total}
               page={page}
               pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+              onPageChange={(p) => setFilters({ page: p })}
+              onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
             />
           </>
         )}

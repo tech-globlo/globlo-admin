@@ -527,7 +527,7 @@ const DestinationDetail = () => {
 
   const f = (tab) => forms[tab] || {}
   const isEditing = (tab) => !!editing[tab]
-  const isSaving = saveMut.isLoading
+  const isSaving = saveMut.isPending
 
   return (
     <>

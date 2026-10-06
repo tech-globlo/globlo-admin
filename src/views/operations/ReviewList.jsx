@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useSearchParamsState } from '../../hooks/useSearchParamState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard, CCardBody, CCardHeader,
@@ -26,15 +27,18 @@ const fetchReviews = async ({ limit, offset, isDeleted, isVerified, sortBy, sort
 
 const ReviewList = () => {
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [isDeleted, setIsDeleted] = useState('')
-  const [isVerified, setIsVerified] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [filters, setFilters] = useSearchParamsState({
+    page: { default: 1, type: 'number' },
+    pageSize: { default: 20, type: 'number' },
+    isDeleted: { default: '' },
+    isVerified: { default: '' },
+    sortBy: { default: 'createdAt' },
+    sortOrder: { default: 'desc' },
+  })
+  const { page, pageSize, isDeleted, isVerified, sortBy, sortOrder } = filters
   const offset = (page - 1) * pageSize
 
-  const handleSort = (field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }
+  const handleSort = (field, order) => { setFilters({ sortBy: field, sortOrder: order, page: 1 }) }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-reviews', { page, pageSize, isDeleted, isVerified, sortBy, sortOrder }],
@@ -73,8 +77,8 @@ const ReviewList = () => {
         <CButton size="sm" color="secondary" onClick={() => setVisibilityConfirm(null)}>
           Cancel
         </CButton>
-        <CButton size="sm" color="warning" onClick={confirmVisibility} disabled={updateMut.isLoading}>
-          {updateMut.isLoading ? <CSpinner size="sm" /> : 'Yes, change it'}
+        <CButton size="sm" color="warning" onClick={confirmVisibility} disabled={updateMut.isPending}>
+          {updateMut.isPending ? <CSpinner size="sm" /> : 'Yes, change it'}
         </CButton>
       </CModalFooter>
     </CModal>
@@ -86,14 +90,14 @@ const ReviewList = () => {
       <CCardBody>
         <CRow className="mb-3 g-2">
           <CCol md={3}>
-            <CFormSelect size="sm" value={isDeleted} onChange={(e) => { setIsDeleted(e.target.value); setPage(1) }}>
+            <CFormSelect size="sm" value={isDeleted} onChange={(e) => setFilters({ isDeleted: e.target.value, page: 1 })}>
               <option value="">All</option>
               <option value="false">Active only</option>
               <option value="true">Deleted only</option>
             </CFormSelect>
           </CCol>
           <CCol md={3}>
-            <CFormSelect size="sm" value={isVerified} onChange={(e) => { setIsVerified(e.target.value); setPage(1) }}>
+            <CFormSelect size="sm" value={isVerified} onChange={(e) => setFilters({ isVerified: e.target.value, page: 1 })}>
               <option value="">Verification: all</option>
               <option value="true">Verified</option>
               <option value="false">Unverified</option>
@@ -111,9 +115,10 @@ const ReviewList = () => {
                 <CTableRow>
                   <CTableHeaderCell style={{ width: 48 }}>Sr No</CTableHeaderCell>
                   <CTableHeaderCell>Reviewer</CTableHeaderCell>
-                  <CTableHeaderCell>Subject</CTableHeaderCell>
+                  <CTableHeaderCell>Subject (Trip/User/Destination/Service)</CTableHeaderCell>
                   <SortableHeader field="rating" label="Rating" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>Comment</CTableHeaderCell>
+                  <CTableHeaderCell style={{ width: 56 }}>Photo</CTableHeaderCell>
                   <CTableHeaderCell>Flags</CTableHeaderCell>
                   <SortableHeader field="createdAt" label="Date" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>Visibility</CTableHeaderCell>
@@ -128,7 +133,13 @@ const ReviewList = () => {
                       <div className="small text-muted">{r.reviewer?.email}</div>
                     </CTableDataCell>
                     <CTableDataCell className="small">
-                      {r.trip?.title || r.destination?.name || r.reviewedUser?.name || '-'}
+                      {r.trip?.title
+                        || r.destination?.name
+                        || r.reviewedUser?.name
+                        || (r.serviceDetails
+                          ? `${r.serviceDetails.title} (${r.serviceDetails.serviceType})${r.serviceDetails.serviceProviderUser ? ` — ${r.serviceDetails.serviceProviderUser.name}` : ''}`
+                          : null)
+                        || '-'}
                     </CTableDataCell>
                     <CTableDataCell>
                       <CBadge color="warning" textColor="dark">
@@ -140,6 +151,22 @@ const ReviewList = () => {
                       style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     >
                       {r.comment || '-'}
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      {r.thumbUrl ? (
+                        <img
+                          src={r.thumbUrl}
+                          alt=""
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }}
+                        />
+                      ) : (
+                        <div
+                          className="text-muted small d-flex align-items-center justify-content-center"
+                          style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--cui-tertiary-bg)' }}
+                        >
+                          -
+                        </div>
+                      )}
                     </CTableDataCell>
                     <CTableDataCell>
                       <div className="d-flex gap-1 flex-wrap">
@@ -155,7 +182,7 @@ const ReviewList = () => {
                         color={r.isPublic ? 'success' : 'outline-secondary'}
                         title={r.isPublic ? 'Make private' : 'Make public'}
                         onClick={() => setVisibilityConfirm({ id: r.id, currentValue: r.isPublic })}
-                        disabled={updateMut.isLoading}
+                        disabled={updateMut.isPending}
                       >
                         <CIcon icon={r.isPublic ? cilCheckCircle : cilBan} size="sm" />
                       </CButton>
@@ -169,8 +196,8 @@ const ReviewList = () => {
               total={data.total}
               page={page}
               pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+              onPageChange={(p) => setFilters({ page: p })}
+              onPageSizeChange={(s) => setFilters({ pageSize: s, page: 1 })}
             />
           </>
         )}

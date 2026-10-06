@@ -358,8 +358,8 @@ const PayoutDetail = () => {
           <CButton color="secondary" onClick={() => setEditModal(false)}>
             Cancel
           </CButton>
-          <CButton color="primary" onClick={handleUpdate} disabled={updateMut.isLoading}>
-            {updateMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+          <CButton color="primary" onClick={handleUpdate} disabled={updateMut.isPending}>
+            {updateMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Update
           </CButton>
         </CModalFooter>
@@ -394,10 +394,10 @@ const PayoutDetail = () => {
           </CButton>
           <CButton
             color="success"
-            disabled={verifyMethodMut.isLoading}
+            disabled={verifyMethodMut.isPending}
             onClick={() => verifyMethodMut.mutate(confirmVerifyMethod.id)}
           >
-            {verifyMethodMut.isLoading ? <CSpinner size="sm" /> : 'Confirm Verify'}
+            {verifyMethodMut.isPending ? <CSpinner size="sm" /> : 'Confirm Verify'}
           </CButton>
         </CModalFooter>
       </CModal>

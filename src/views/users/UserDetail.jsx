@@ -92,6 +92,13 @@ const BOOKING_STATUS_COLOR = {
   CANCELLED: 'danger',
   WAITLISTED: 'info',
 }
+// BookingParticipant.status on a Payment row — separate from Payment.status
+// itself. A PG can cancel after paying without the payment being reversed
+// (that only happens via a Refund), so these two disagree often enough that
+// both need to be visible side by side on the Payments tab.
+const PAYMENT_BOOKING_STATUS_COLOR = {
+  PENDING: 'warning', SUCCESS: 'success', CANCELLED: 'dark', FAILED: 'danger', REJECTED: 'secondary',
+}
 
 const ASSIGNMENT_STATUS_COLOR = {
   PENDING: 'warning',
@@ -164,6 +171,15 @@ const ACTIVITY_PAGE = 5
 
 const ActionPanel = ({ user, id, qc }) => {
   const navigate = useNavigate()
+  // Recent sign-ins (UserSession rows). Read-only; newest first.
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
+    queryKey: ['admin-user-sessions', id],
+    queryFn: async () => {
+      const res = await api.get(`/api/admin/users/${id}/sessions`)
+      return res.data.data
+    },
+    enabled: !!id,
+  })
   const [statusModal, setStatusModal] = useState(false)
   const [newStatus, setNewStatus] = useState('')
   const [reason, setReason] = useState('')
@@ -288,6 +304,36 @@ const ActionPanel = ({ user, id, qc }) => {
         </CCardBody>
       </CCard>
 
+      {/* Recent Sign-ins */}
+      <CCard className="mb-3 shadow-sm">
+        <CCardHeader className="py-2 d-flex justify-content-between align-items-center">
+          <div>
+            <strong className="small">Recent sign-ins</strong>
+            <span className="text-muted small ms-1">(last 20)</span>
+          </div>
+          {sessionsLoading && <CSpinner size="sm" />}
+        </CCardHeader>
+        <CCardBody className="p-0">
+          {!sessionsLoading && (sessionsData?.sessions?.length ?? 0) === 0 && (
+            <p className="text-muted small px-3 py-2 mb-0">No sign-ins recorded yet.</p>
+          )}
+          {(sessionsData?.sessions ?? []).map((s) => (
+            <div key={s.id} className="d-flex align-items-start gap-2 px-3 py-2 border-bottom">
+              <CIcon icon={cilHistory} size="sm" className="text-muted mt-1 flex-shrink-0" />
+              <div className="flex-grow-1 min-w-0">
+                <div className="small fw-semibold">
+                  IP: <span className="fw-normal">{s.ipAddress || '—'}</span>
+                  <span className="ms-3">Platform: <span className="fw-normal">{s.platform || '—'}</span></span>
+                </div>
+                <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                  Signed in {fmtDateTime(s.loggedInAt)} · Last seen {fmtDateTime(s.lastSeenAt)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </CCardBody>
+      </CCard>
+
       {/* Recent Activity */}
       <CCard className="mb-3 shadow-sm">
         <CCardHeader className="py-2 d-flex justify-content-between align-items-center">
@@ -404,8 +450,8 @@ const ActionPanel = ({ user, id, qc }) => {
           >
             Cancel
           </CButton>
-          <CButton color="primary" onClick={handleStatusSubmit} disabled={statusMut.isLoading}>
-            {statusMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+          <CButton color="primary" onClick={handleStatusSubmit} disabled={statusMut.isPending}>
+            {statusMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Confirm
           </CButton>
         </CModalFooter>
@@ -456,8 +502,8 @@ const ActionPanel = ({ user, id, qc }) => {
           >
             Cancel
           </CButton>
-          <CButton color="danger" onClick={handleHardDeleteSubmit} disabled={hardDeleteMut.isLoading}>
-            {hardDeleteMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+          <CButton color="danger" onClick={handleHardDeleteSubmit} disabled={hardDeleteMut.isPending}>
+            {hardDeleteMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Permanently Delete
           </CButton>
         </CModalFooter>
@@ -1150,6 +1196,7 @@ const UserDetail = () => {
                             <CTableHeaderCell>Total</CTableHeaderCell>
                             <CTableHeaderCell>Method</CTableHeaderCell>
                             <CTableHeaderCell>Status</CTableHeaderCell>
+                            <CTableHeaderCell>Booking Status</CTableHeaderCell>
                             <CTableHeaderCell>Date</CTableHeaderCell>
                             <CTableHeaderCell></CTableHeaderCell>
                           </CTableRow>
@@ -1190,6 +1237,15 @@ const UserDetail = () => {
                                 <CBadge color={PAYMENT_STATUS_COLOR[p.status] || 'secondary'}>
                                   {p.status}
                                 </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                {p.participant?.status ? (
+                                  <CBadge color={PAYMENT_BOOKING_STATUS_COLOR[p.participant.status] || 'secondary'}>
+                                    {p.participant.status}
+                                  </CBadge>
+                                ) : (
+                                  <span className="text-muted small">-</span>
+                                )}
                               </CTableDataCell>
                               <CTableDataCell className="small text-muted">
                                 {fmtDate(p.createdAt)}
@@ -1610,7 +1666,7 @@ const UserDetail = () => {
           </CButton>
           <CButton
             color="primary"
-            disabled={!spDestSelected || addSPDestMut.isLoading}
+            disabled={!spDestSelected || addSPDestMut.isPending}
             onClick={() =>
               addSPDestMut.mutate({
                 destinationId: spDestSelected,
@@ -1619,7 +1675,7 @@ const UserDetail = () => {
               })
             }
           >
-            {addSPDestMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            {addSPDestMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Add Destination
           </CButton>
         </CModalFooter>
@@ -1671,7 +1727,7 @@ const UserDetail = () => {
           </CButton>
           <CButton
             color="primary"
-            disabled={updateSPDestGatesMut.isLoading}
+            disabled={updateSPDestGatesMut.isPending}
             onClick={() =>
               updateSPDestGatesMut.mutate({
                 spdId: spEditGatesModal.id,
@@ -1679,7 +1735,7 @@ const UserDetail = () => {
               })
             }
           >
-            {updateSPDestGatesMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            {updateSPDestGatesMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Save
           </CButton>
         </CModalFooter>

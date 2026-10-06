@@ -104,7 +104,7 @@ const DestinationRequests = () => {
     setMutError(null)
   }
 
-  const busy = approveMut.isLoading || rejectMut.isLoading
+  const busy = approveMut.isPending || rejectMut.isPending
 
   return (
     <>
@@ -229,7 +229,7 @@ const DestinationRequests = () => {
             onClick={() => rejectMut.mutate({ id: selected.id })}
             disabled={busy || !notes.trim()}
           >
-            {rejectMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            {rejectMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Reject
           </CButton>
           <CButton
@@ -237,7 +237,7 @@ const DestinationRequests = () => {
             onClick={() => approveMut.mutate({ id: selected.id })}
             disabled={busy}
           >
-            {approveMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            {approveMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
             Approve
           </CButton>
         </CModalFooter>

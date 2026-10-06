@@ -297,8 +297,8 @@ const DestinationEdit = () => {
             <CButton color="secondary" size="sm" onClick={() => navigate('/destinations')}>
               Cancel
             </CButton>
-            <CButton color="primary" size="sm" onClick={handleSave} disabled={saveMut.isLoading}>
-              {saveMut.isLoading ? <CSpinner size="sm" className="me-1" /> : null}
+            <CButton color="primary" size="sm" onClick={handleSave} disabled={saveMut.isPending}>
+              {saveMut.isPending ? <CSpinner size="sm" className="me-1" /> : null}
               Save
             </CButton>
           </div>

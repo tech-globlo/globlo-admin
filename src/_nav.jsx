@@ -26,6 +26,7 @@ import {
   cilImage,
   cilHistory,
   cilBolt,
+  cilShareAlt,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
@@ -61,6 +62,12 @@ const _nav = [
     name: 'Subscribers',
     to: '/subscribers',
     icon: <CIcon icon={cilBadge} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Referrals',
+    to: '/referrals',
+    icon: <CIcon icon={cilShareAlt} customClassName="nav-icon" />,
   },
 
   { component: CNavTitle, name: 'Content' },
@@ -123,6 +130,7 @@ const _nav = [
     icon: <CIcon icon={cilMoney} customClassName="nav-icon" />,
     items: [
       { component: CNavItem, name: 'All Payments', to: '/payments', end: true },
+      { component: CNavItem, name: 'Schedule', to: '/payments/schedule', end: true },
       { component: CNavItem, name: 'Refunds', to: '/payments/refunds', end: true },
       { component: CNavItem, name: 'Coupons', to: '/payments/coupons', end: true },
     ],
@@ -149,7 +157,7 @@ const _nav = [
   },
   {
     component: CNavItem,
-    name: 'Jungle Mode',
+    name: 'Safari Mode',
     to: '/jungle-mode',
     icon: <CIcon icon={cilLeaf} customClassName="nav-icon" />,
   },

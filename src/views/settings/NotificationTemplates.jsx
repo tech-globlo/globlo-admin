@@ -121,7 +121,7 @@ const NotificationTemplates = () => {
     else createMut.mutate(payload)
   }
 
-  const isSaving = createMut.isLoading || updateMut.isLoading
+  const isSaving = createMut.isPending || updateMut.isPending
   const canSave = form.name && form.eventType && form.titleTemplate && form.bodyTemplate && form.channels.length > 0
 
   return (
@@ -199,10 +199,10 @@ const NotificationTemplates = () => {
                         <CButton size="sm" color="outline-primary" onClick={() => openEdit(t)}>Edit</CButton>
                         <CButton
                           size="sm" color="outline-danger"
-                          disabled={deleteMut.isLoading && deleteMut.variables === t.id}
+                          disabled={deleteMut.isPending && deleteMut.variables === t.id}
                           onClick={() => { if (window.confirm(`Delete template "${t.name}"?`)) deleteMut.mutate(t.id) }}
                         >
-                          {deleteMut.isLoading && deleteMut.variables === t.id ? <CSpinner size="sm" /> : 'Del'}
+                          {deleteMut.isPending && deleteMut.variables === t.id ? <CSpinner size="sm" /> : 'Del'}
                         </CButton>
                       </div>
                     </CTableDataCell>

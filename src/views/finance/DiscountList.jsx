@@ -31,6 +31,7 @@ const EMPTY_FORM = {
   kind: 'PERCENT_OFF',
   percentValue: '',   // UI-only, converted to `value` (0-1 fraction) on save
   rupeeValue: '',     // UI-only, converted to `valueMinor` on save
+  waiverPercentValue: '', // UI-only (PLATFORM_FEE_WAIVER), converted to `value` (0-1 fraction) on save — 100 = full waiver
   validFrom: '',
   validUntil: '',
   maxRedemptions: '',
@@ -43,7 +44,7 @@ const EMPTY_FORM = {
 const describeValue = (d) => {
   if (d.kind === 'PERCENT_OFF') return `${(Number(d.value) * 100).toFixed(0)}%`
   if (d.kind === 'FLAT_AMOUNT_OFF') return fmt(d.valueMinor)
-  return 'Fee waived'
+  return `${(Number(d.value) * 100).toFixed(0)}% fee waived`
 }
 
 const DiscountList = () => {
@@ -99,6 +100,7 @@ const DiscountList = () => {
       kind: d.kind,
       percentValue: d.kind === 'PERCENT_OFF' ? String(Number(d.value) * 100) : '',
       rupeeValue: d.kind === 'FLAT_AMOUNT_OFF' ? String(Number(d.valueMinor || 0) / CURRENCY.MINOR_UNIT) : '',
+      waiverPercentValue: d.kind === 'PLATFORM_FEE_WAIVER' ? String(Number(d.value) * 100) : '',
       validFrom: d.validFrom ? d.validFrom.slice(0, 10) : '',
       validUntil: d.validUntil ? d.validUntil.slice(0, 10) : '',
       maxRedemptions: d.maxRedemptions != null ? String(d.maxRedemptions) : '',
@@ -128,7 +130,7 @@ const DiscountList = () => {
       payload.value = 0
       payload.valueMinor = Math.round((parseFloat(form.rupeeValue) || 0) * CURRENCY.MINOR_UNIT)
     } else {
-      payload.value = 0
+      payload.value = (parseFloat(form.waiverPercentValue) || 0) / 100
     }
     return payload
   }
@@ -172,12 +174,13 @@ const DiscountList = () => {
     else createMut.mutate(payload)
   }
 
-  const isSaving = createMut.isLoading || updateMut.isLoading
+  const isSaving = createMut.isPending || updateMut.isPending
   const canSave =
     form.code.trim() &&
     form.validFrom &&
     (form.kind !== 'PERCENT_OFF' || form.percentValue) &&
-    (form.kind !== 'FLAT_AMOUNT_OFF' || form.rupeeValue)
+    (form.kind !== 'FLAT_AMOUNT_OFF' || form.rupeeValue) &&
+    (form.kind !== 'PLATFORM_FEE_WAIVER' || form.waiverPercentValue)
 
   const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-discount-stats', statsFor],
@@ -256,7 +259,7 @@ const DiscountList = () => {
                       </CTableDataCell>
                       <CTableDataCell className="small">{d.fundedBy?.replace(/_/g, ' ')}</CTableDataCell>
                       <CTableDataCell>
-                        {toggleActiveMut.isLoading && toggleActiveMut.variables?.id === d.id ? (
+                        {toggleActiveMut.isPending && toggleActiveMut.variables?.id === d.id ? (
                           <CSpinner size="sm" />
                         ) : (
                           <CBadge
@@ -284,7 +287,7 @@ const DiscountList = () => {
                           </CButton>
                           <CButton
                             size="sm" color="outline-danger"
-                            disabled={deleteMut.isLoading && deleteMut.variables === d.id}
+                            disabled={deleteMut.isPending && deleteMut.variables === d.id}
                             title={d.redemptionCount > 0 ? 'Redeemed coupons can only be deactivated' : 'Delete'}
                             onClick={() => {
                               if (d.redemptionCount > 0) {
@@ -294,7 +297,7 @@ const DiscountList = () => {
                               if (window.confirm(`Delete coupon "${d.code}"?`)) deleteMut.mutate(d.id)
                             }}
                           >
-                            {deleteMut.isLoading && deleteMut.variables === d.id
+                            {deleteMut.isPending && deleteMut.variables === d.id
                               ? <CSpinner size="sm" />
                               : <CIcon icon={cilTrash} size="sm" />}
                           </CButton>
@@ -367,6 +370,19 @@ const DiscountList = () => {
                     value={form.rupeeValue}
                     onChange={(e) => f('rupeeValue', e.target.value)}
                     placeholder="e.g. 500"
+                  />
+                </div>
+              </div>
+            )}
+            {form.kind === 'PLATFORM_FEE_WAIVER' && (
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <CFormLabel className="small">Fee Waived (%) *</CFormLabel>
+                  <CFormInput
+                    size="sm" type="number" min="0" max="100" step="1"
+                    value={form.waiverPercentValue}
+                    onChange={(e) => f('waiverPercentValue', e.target.value)}
+                    placeholder="100 for a full waiver, 50 for half"
                   />
                 </div>
               </div>

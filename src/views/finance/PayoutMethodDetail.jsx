@@ -291,8 +291,8 @@ const PayoutMethodDetail = () => {
           <CButton color="secondary" variant="outline" onClick={() => setConfirmVerify(false)}>
             Cancel
           </CButton>
-          <CButton color="success" disabled={verifyMutation.isLoading} onClick={() => verifyMutation.mutate()}>
-            {verifyMutation.isLoading ? <CSpinner size="sm" /> : 'Confirm Verify'}
+          <CButton color="success" disabled={verifyMutation.isPending} onClick={() => verifyMutation.mutate()}>
+            {verifyMutation.isPending ? <CSpinner size="sm" /> : 'Confirm Verify'}
           </CButton>
         </CModalFooter>
       </CModal>
