@@ -66,6 +66,23 @@ const PayoutMethodDetail = () => {
     },
   })
 
+  const [revealedAccountNumber, setRevealedAccountNumber] = React.useState(null)
+  const revealMutation = useMutation({
+    mutationFn: () => api.post(`/api/admin/payout-methods/${id}/reveal-account-number`, {}),
+    onSuccess: (res) => setRevealedAccountNumber(res.data.data.accountNumber),
+  })
+
+  // Triggers a brand-new Penny Drop attempt — not a free re-check of a
+  // pending one (the idfc-validation-poll cron already handles that).
+  const [confirmRevalidate, setConfirmRevalidate] = React.useState(false)
+  const revalidateMutation = useMutation({
+    mutationFn: () => api.post(`/api/admin/payout-methods/${id}/revalidate-idfc`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-payout-method', id] })
+      setConfirmRevalidate(false)
+    },
+  })
+
   if (isLoading) return <div className="text-center py-5"><CSpinner color="primary" /></div>
   if (isError || !data) return <CAlert color="danger">Failed to load payout method.</CAlert>
 
@@ -111,7 +128,7 @@ const PayoutMethodDetail = () => {
             <div className="fw-bold fs-5">₹{(totalTransferred / 100).toLocaleString('en-IN')}</div>
             <div className="small text-muted">Total Transferred</div>
             <div className="small text-muted">{payouts.filter(p => p.status === 'SUCCESS').length} of {payouts.length} payouts</div>
-            {!method.verified && (
+            {!method.verified && (method.gateway !== 'idfc' || method.idfcValidationStatus === 'valid') && (
               <CButton
                 color="success"
                 size="sm"
@@ -120,6 +137,11 @@ const PayoutMethodDetail = () => {
               >
                 Verify
               </CButton>
+            )}
+            {!method.verified && method.gateway === 'idfc' && method.idfcValidationStatus !== 'valid' && (
+              <div className="small text-muted mt-2">
+                Can't verify yet — IDFC validation is "{method.idfcValidationStatus || 'unknown'}". Re-validate below.
+              </div>
             )}
           </div>
         </div>
@@ -155,7 +177,30 @@ const PayoutMethodDetail = () => {
                     ) : (
                       <>
                         <InfoRow label="Account Holder Name" value={method.accountHolderName} />
-                        <InfoRow label="Account Number" value={method.accountNumberMasked} mono />
+                        <InfoRow
+                          label="Account Number"
+                          mono
+                          value={
+                            revealedAccountNumber ? (
+                              <span className="text-danger">{revealedAccountNumber}</span>
+                            ) : (
+                              <span className="d-flex align-items-center gap-2 justify-content-end">
+                                {method.accountNumberMasked}
+                                {method.hasEncryptedAccountNumber && (
+                                  <CButton
+                                    size="sm"
+                                    color="link"
+                                    className="p-0 small"
+                                    disabled={revealMutation.isPending}
+                                    onClick={() => revealMutation.mutate()}
+                                  >
+                                    {revealMutation.isPending ? <CSpinner size="sm" /> : 'Reveal'}
+                                  </CButton>
+                                )}
+                              </span>
+                            )
+                          }
+                        />
                         <InfoRow label="IFSC Code" value={method.ifscCode} mono />
                         <InfoRow label="Bank Name" value={method.bankName} />
                       </>
@@ -168,13 +213,34 @@ const PayoutMethodDetail = () => {
                 </Section>
               </CCol>
               <CCol md={6}>
-                <Section title="Razorpay References">
-                  <CListGroup flush>
-                    <InfoRow label="Contact ID" value={method.razorpayContactId} mono />
-                    <InfoRow label="Fund Account ID" value={method.razorpayFundAccountId} mono />
-                    <InfoRow label="Fund Account Type" value={method.razorpayFundAccountType} />
-                  </CListGroup>
-                </Section>
+                {method.gateway === 'idfc' ? (
+                  <Section title="IDFC Validation">
+                    <CListGroup flush>
+                      <InfoRow label="Validation Status" value={method.idfcValidationStatus} />
+                      <InfoRow label="Identifier Used" value={method.idfcValidationIdentifier} mono />
+                      <InfoRow label="Name Returned by Bank" value={method.idfcBeneficiaryNameReturned} />
+                      <InfoRow label="Validated At" value={fmtDateTime(method.idfcValidatedAt)} />
+                      <InfoRow label="Transaction Reference" value={method.idfcValidationTransactionReference} mono />
+                    </CListGroup>
+                    <CButton
+                      size="sm"
+                      color="secondary"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={() => setConfirmRevalidate(true)}
+                    >
+                      Re-validate
+                    </CButton>
+                  </Section>
+                ) : (
+                  <Section title="Razorpay References">
+                    <CListGroup flush>
+                      <InfoRow label="Contact ID" value={method.razorpayContactId} mono />
+                      <InfoRow label="Fund Account ID" value={method.razorpayFundAccountId} mono />
+                      <InfoRow label="Fund Account Type" value={method.razorpayFundAccountType} />
+                    </CListGroup>
+                  </Section>
+                )}
                 <Section title="Account Holder">
                   <CListGroup flush>
                     <InfoRow label="User ID" value={method.userId} mono />
@@ -220,6 +286,7 @@ const PayoutMethodDetail = () => {
                       <CTableHeaderCell>Mode</CTableHeaderCell>
                       <CTableHeaderCell>Status</CTableHeaderCell>
                       <CTableHeaderCell>Gateway Ref</CTableHeaderCell>
+                      <CTableHeaderCell>IDFC Status</CTableHeaderCell>
                       <CTableHeaderCell>Initiated</CTableHeaderCell>
                       <CTableHeaderCell>Completed</CTableHeaderCell>
                     </CTableRow>
@@ -238,7 +305,10 @@ const PayoutMethodDetail = () => {
                           <CBadge color={PAYOUT_STATUS_COLOR[p.status] || 'secondary'}>{p.status}</CBadge>
                         </CTableDataCell>
                         <CTableDataCell className="small font-monospace text-muted" style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {p.razorpayTransferId || p.razorpayPayoutId || '-'}
+                          {p.razorpayTransferId || p.razorpayPayoutId || p.idfcTransactionReferenceNumber || p.idfcPaymentReferenceNumber || '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {p.gateway === 'idfc' ? [p.lastRespCode, p.adjustmentType].filter(Boolean).join(' / ') || '-' : '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">{fmtDate(p.initiatedAt)}</CTableDataCell>
                         <CTableDataCell className="small text-muted">{fmtDate(p.completedAt)}</CTableDataCell>
@@ -293,6 +363,35 @@ const PayoutMethodDetail = () => {
           </CButton>
           <CButton color="success" disabled={verifyMutation.isPending} onClick={() => verifyMutation.mutate()}>
             {verifyMutation.isPending ? <CSpinner size="sm" /> : 'Confirm Verify'}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      <CModal visible={confirmRevalidate} onClose={() => setConfirmRevalidate(false)}>
+        <CModalHeader>
+          <CModalTitle>Re-validate Beneficiary</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p className="mb-2">
+            This triggers a <strong>brand-new</strong> IDFC Beneficiary Validation attempt — for Penny Drop
+            (IMPS1.0) that means a real ₹1 is debited again, it does not just re-check the existing result.
+            Only do this after confirming the corrected details with {method.user?.name || 'the user'}.
+          </p>
+          <div className="small font-monospace bg-body-secondary rounded p-2">
+            {method.accountHolderName} · {method.accountNumberMasked} · {method.ifscCode}
+          </div>
+          {revalidateMutation.isError && (
+            <CAlert color="danger" className="mt-3 mb-0">
+              {revalidateMutation.error?.response?.data?.message || 'Failed to re-validate beneficiary.'}
+            </CAlert>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={() => setConfirmRevalidate(false)}>
+            Cancel
+          </CButton>
+          <CButton color="warning" disabled={revalidateMutation.isPending} onClick={() => revalidateMutation.mutate()}>
+            {revalidateMutation.isPending ? <CSpinner size="sm" /> : 'Re-validate'}
           </CButton>
         </CModalFooter>
       </CModal>

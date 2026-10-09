@@ -81,6 +81,7 @@ const PayoutMethods = () => {
                     onSort={handleSort}
                   />
                   <CTableHeaderCell>Label / Account</CTableHeaderCell>
+                  <CTableHeaderCell>Gateway</CTableHeaderCell>
                   <SortableHeader
                     field="verified"
                     label="Verified"
@@ -115,6 +116,12 @@ const PayoutMethods = () => {
                     <CTableDataCell className="small">{m.type}</CTableDataCell>
                     <CTableDataCell className="small text-muted">
                       {m.type === 'UPI' ? m.upiId : (m.label || m.accountNumberMasked || '-')}
+                    </CTableDataCell>
+                    <CTableDataCell className="small">
+                      {m.gateway === 'idfc' ? 'IDFC' : 'Razorpay'}
+                      {m.gateway === 'idfc' && m.idfcValidationStatus && (
+                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>{m.idfcValidationStatus}</div>
+                      )}
                     </CTableDataCell>
                     <CTableDataCell>
                       <CBadge color={m.verified ? 'success' : 'warning'}>
