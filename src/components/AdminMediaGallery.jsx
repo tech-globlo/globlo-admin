@@ -79,7 +79,10 @@ const MediaTile = ({ item, onClick, onDelete, deleting, showTypeLabel, brokenIds
         <CButton
           size="sm"
           color="danger"
-          style={{ padding: '2px 5px', opacity: 0.85, lineHeight: 1 }}
+          style={{
+            width: 22, height: 22, padding: 0, opacity: 0.85, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
           disabled={deleting === item.id}
         >
           {deleting === item.id

@@ -94,7 +94,7 @@ const ServiceDetail = () => {
     { key: 'info', label: 'Basic Info' },
     { key: 'gallery', label: `Gallery (${allImages.length})` },
     { key: 'documents', label: `Documents (${verificationDocuments.length})` },
-    { key: 'reviews', label: `Reviews (${service._count?.reviews ?? 0})` },
+    { key: 'reviews', label: `Reviews (${service.reviewCount ?? 0})` },
   ]
 
   return (
@@ -340,13 +340,17 @@ const ServiceDetail = () => {
                     />
                     <span className="fs-4 fw-bold text-warning">{avgRating}</span>
                     <span className="small text-muted">
-                      / 5 average from {service._count?.reviews} reviews
+                      / 5 average from {reviewCount} reviews
                     </span>
                   </div>
                 )}
                 <div className="d-flex flex-column gap-3">
                   {service.reviews.map((r) => (
-                    <div key={r.id} className="p-3 bg-body-secondary rounded">
+                    <div
+                      key={r.id}
+                      className="p-3 bg-body-secondary rounded"
+                      style={{ opacity: r.isDeleted ? 0.5 : 1 }}
+                    >
                       <div className="d-flex justify-content-between align-items-center mb-1">
                         <div className="d-flex align-items-center gap-2">
                           <div
@@ -371,6 +375,7 @@ const ServiceDetail = () => {
                           </span>
                         </div>
                         <div className="d-flex gap-2 align-items-center">
+                          {r.isDeleted && <CBadge color="secondary">Deleted</CBadge>}
                           <CBadge color="warning" textColor="dark">
                             <CIcon icon={cilStar} size="sm" className="me-1" />
                             {r.rating} / 5

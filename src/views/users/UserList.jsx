@@ -156,7 +156,7 @@ const UserList = () => {
                   <SortableHeader field="accountStatus"  label="Status"      sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>SP Verified</CTableHeaderCell>
                   <SortableHeader field="createdTrips"   label="Trips"       sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
-                  <SortableHeader field="receivedReviews" label="Reviews"    sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                  <SortableHeader field="reviewCount" label="Reviews"    sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <SortableHeader field="createdAt"      label="Joined"      sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <CTableHeaderCell>Action</CTableHeaderCell>
                 </CTableRow>
@@ -208,8 +208,8 @@ const UserList = () => {
                         </CBadge>
                       ) : '—'}
                     </CTableDataCell>
-                    <CTableDataCell>{u._count?.createdTrips ?? 0}</CTableDataCell>
-                    <CTableDataCell>{u._count?.receivedReviews ?? 0}</CTableDataCell>
+                    <CTableDataCell>{u.tripsCount ?? 0}</CTableDataCell>
+                    <CTableDataCell>{u.reviewCount ?? 0}</CTableDataCell>
                     <CTableDataCell className="small text-muted">
                       {fmtDate(u.createdAt)}
                     </CTableDataCell>

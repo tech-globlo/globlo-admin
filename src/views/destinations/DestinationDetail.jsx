@@ -509,9 +509,9 @@ const DestinationDetail = () => {
     )
   if (isError || !dest) return <CAlert color="danger">Failed to load destination.</CAlert>
 
-  const avgRating = dest.reviews?.length
-    ? (dest.reviews.reduce((s, r) => s + r.rating, 0) / dest.reviews.length).toFixed(1)
-    : dest.rating?.toFixed(1)
+  // Use the denormalized aggregate — dest.reviews now includes soft-deleted
+  // rows (for admin moderation), so averaging it directly would be wrong.
+  const avgRating = dest.rating?.toFixed(1)
 
   const TABS = [
     { key: 'info', label: 'Info' },
@@ -522,7 +522,7 @@ const DestinationDetail = () => {
     ...(dest.gates?.length > 0 ? [{ key: 'gates', label: `Gates (${dest.gates.length})` }] : []),
     { key: 'gallery', label: `Gallery (${dest.photoGallery?.length ?? 0})` },
     { key: 'trips', label: `Trips (${dest._count?.trips ?? 0})` },
-    { key: 'reviews', label: `Reviews (${dest._count?.reviews ?? 0})` },
+    { key: 'reviews', label: `Reviews (${dest.reviewCount ?? 0})` },
   ]
 
   const f = (tab) => forms[tab] || {}
@@ -607,7 +607,7 @@ const DestinationDetail = () => {
           <div className="d-flex flex-wrap border-top mt-3 pt-3" style={{ gap: 0 }}>
             {[
               { label: 'Trips', value: dest._count?.trips, color: 'primary' },
-              { label: 'Reviews', value: dest._count?.reviews, color: 'warning' },
+              { label: 'Reviews', value: dest.reviewCount, color: 'warning' },
               { label: 'Gates', value: dest._count?.gates, color: 'info' },
               { label: 'Sightings', value: dest._count?.sightings, color: 'success' },
               { label: 'Wishlisted', value: dest._count?.wishlistedBy, color: 'secondary' },
@@ -1551,13 +1551,17 @@ const DestinationDetail = () => {
                       />
                       <span className="fs-4 fw-bold text-warning">{avgRating}</span>
                       <span className="small text-muted">
-                        average from {dest._count?.reviews} reviews
+                        average from {dest.reviewCount ?? 0} reviews
                       </span>
                     </div>
                   )}
                   <div className="d-flex flex-column gap-3">
                     {dest.reviews.map((r) => (
-                      <div key={r.id} className="p-3 bg-body-secondary rounded">
+                      <div
+                        key={r.id}
+                        className="p-3 bg-body-secondary rounded"
+                        style={{ opacity: r.isDeleted ? 0.5 : 1 }}
+                      >
                         <div className="d-flex justify-content-between align-items-center mb-1">
                           <div className="d-flex align-items-center gap-2">
                             <div
@@ -1582,6 +1586,7 @@ const DestinationDetail = () => {
                             </span>
                           </div>
                           <div className="d-flex gap-2 align-items-center">
+                            {r.isDeleted && <CBadge color="secondary">Deleted</CBadge>}
                             <CBadge color="warning" textColor="dark">
                               <CIcon icon={cilStar} size="sm" className="me-1" />
                               {r.rating} / 5
