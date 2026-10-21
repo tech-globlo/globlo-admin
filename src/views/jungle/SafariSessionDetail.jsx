@@ -11,6 +11,22 @@ import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 
 const STATUS_COLOR = { ACTIVE: 'success', ENDED: 'secondary', ABANDONED: 'warning' }
 
+// Builds a Google Maps directions link from a GeoJSON LineString's
+// coordinates — no map library/dependency needed just to let an admin open
+// the recorded route externally.
+const routeMapsUrl = (routeGeojson) => {
+  const coords = routeGeojson?.coordinates
+  if (!Array.isArray(coords) || coords.length === 0) return null
+  // GeoJSON is [lng, lat]; Google Maps wants lat,lng.
+  const points = coords.filter((c) => Array.isArray(c) && c.length >= 2)
+  if (points.length === 0) return null
+  const path = points.map(([lng, lat]) => `${lat},${lng}`).join('/')
+  return `https://www.google.com/maps/dir/${path}`
+}
+
+const pointMapsUrl = (lat, lng) =>
+  lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : null
+
 const SafariSessionDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -63,6 +79,12 @@ const SafariSessionDetail = () => {
                     <span className="small">{session.zone}</span>
                   </CListGroupItem>
                 )}
+                {session.vehicleId && (
+                  <CListGroupItem className="d-flex justify-content-between">
+                    <span className="text-muted small">Vehicle</span>
+                    <span className="small">{session.vehicleId}</span>
+                  </CListGroupItem>
+                )}
                 <CListGroupItem className="d-flex justify-content-between">
                   <span className="text-muted small">Start</span>
                   <span className="small">{fmtDateTime(session.startTime)}</span>
@@ -73,10 +95,48 @@ const SafariSessionDetail = () => {
                     <span className="small">{fmtDateTime(session.endTime)}</span>
                   </CListGroupItem>
                 )}
-                <CListGroupItem className="d-flex justify-content-between">
-                  <span className="text-muted small">Participants</span>
-                  <span className="small">{session.participants?.length || 0}</span>
+                {session.distanceMeters != null && (
+                  <CListGroupItem className="d-flex justify-content-between">
+                    <span className="text-muted small">Distance</span>
+                    <span className="small">{(session.distanceMeters / 1000).toFixed(1)} km</span>
+                  </CListGroupItem>
+                )}
+                {routeMapsUrl(session.routeGeojson) && (
+                  <CListGroupItem className="d-flex justify-content-between">
+                    <span className="text-muted small">GPS Track</span>
+                    <a href={routeMapsUrl(session.routeGeojson)} target="_blank" rel="noreferrer" className="small">
+                      View route ({session.routeGeojson.coordinates.length} points)
+                    </a>
+                  </CListGroupItem>
+                )}
+                <CListGroupItem>
+                  <div className="text-muted small mb-1">
+                    Participants ({session.participantUsers?.length ?? session.participants?.length ?? 0})
+                  </div>
+                  {session.participantUsers?.length > 0 ? (
+                    <div className="small">
+                      {session.participantUsers.map((u) => (
+                        <div key={u.id}>{u.name || u.email || u.id}</div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="small text-muted">-</span>
+                  )}
                 </CListGroupItem>
+                {session.weather && typeof session.weather === 'object' && (
+                  <CListGroupItem>
+                    <div className="text-muted small mb-1">Weather</div>
+                    <div className="small">
+                      {Object.entries(session.weather)
+                        .filter(([, v]) => v != null && v !== '')
+                        .map(([k, v]) => (
+                          <div key={k}>
+                            {k}: {String(v)}
+                          </div>
+                        ))}
+                    </div>
+                  </CListGroupItem>
+                )}
                 {session.notes && (
                   <CListGroupItem>
                     <div className="text-muted small mb-1">Notes</div>
@@ -105,6 +165,10 @@ const SafariSessionDetail = () => {
                       <CTableHeaderCell>Species</CTableHeaderCell>
                       <CTableHeaderCell>Group</CTableHeaderCell>
                       <CTableHeaderCell>Count</CTableHeaderCell>
+                      <CTableHeaderCell>Reporter</CTableHeaderCell>
+                      <CTableHeaderCell>Location</CTableHeaderCell>
+                      <CTableHeaderCell>Zone</CTableHeaderCell>
+                      <CTableHeaderCell>Source</CTableHeaderCell>
                       <CTableHeaderCell>Confidence</CTableHeaderCell>
                       <CTableHeaderCell>Verified</CTableHeaderCell>
                       <CTableHeaderCell>Observed At</CTableHeaderCell>
@@ -115,6 +179,11 @@ const SafariSessionDetail = () => {
                       <CTableRow key={s.id}>
                         <CTableDataCell className="small fw-semibold">
                           {s.species?.commonName || s.speciesText || '-'}
+                          {s.notes && (
+                            <div className="text-muted fw-normal mt-1" style={{ fontSize: 11 }}>
+                              {s.notes}
+                            </div>
+                          )}
                         </CTableDataCell>
                         <CTableDataCell>
                           {s.species?.taxonGroup && (
@@ -122,11 +191,31 @@ const SafariSessionDetail = () => {
                           )}
                         </CTableDataCell>
                         <CTableDataCell className="small">{s.count}</CTableDataCell>
+                        <CTableDataCell className="small">
+                          {s.reporter?.name || s.reporter?.email || s.reporterUserId}
+                        </CTableDataCell>
+                        <CTableDataCell className="small">
+                          {pointMapsUrl(s.latitude, s.longitude) ? (
+                            <a href={pointMapsUrl(s.latitude, s.longitude)} target="_blank" rel="noreferrer">
+                              {s.latitude.toFixed(4)}, {s.longitude.toFixed(4)}
+                            </a>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">{s.zone || '-'}</CTableDataCell>
+                        <CTableDataCell className="small text-muted">{s.source}</CTableDataCell>
                         <CTableDataCell className="small">{s.confidence}%</CTableDataCell>
                         <CTableDataCell>
                           <CBadge color={s.isVerified ? 'success' : 'secondary'}>
                             {s.isVerified ? 'Yes' : 'No'}
                           </CBadge>
+                          {s.isVerified && (s.verifiedBy || s.verifiedAt) && (
+                            <div className="text-muted mt-1" style={{ fontSize: 10 }}>
+                              {s.verifiedBy && s.verifiedBy !== 'SYSTEM_HEURISTIC' ? s.verifiedBy : 'System'}
+                              {s.verifiedAt ? ` · ${fmtDateTime(s.verifiedAt)}` : ''}
+                            </div>
+                          )}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
                           {fmtDateTime(s.observedAt)}

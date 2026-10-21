@@ -520,6 +520,9 @@ const DestinationDetail = () => {
     // Only a minority of destinations have gate data sourced — hide the tab
     // entirely rather than show an always-empty one for the rest.
     ...(dest.gates?.length > 0 ? [{ key: 'gates', label: `Gates (${dest.gates.length})` }] : []),
+    ...(dest.monthlyGuide?.length > 0
+      ? [{ key: 'monthlyGuide', label: `Monthly Guide (${dest.monthlyGuide.length})` }]
+      : []),
     { key: 'gallery', label: `Gallery (${dest.photoGallery?.length ?? 0})` },
     { key: 'trips', label: `Trips (${dest._count?.trips ?? 0})` },
     { key: 'reviews', label: `Reviews (${dest.reviewCount ?? 0})` },
@@ -1244,17 +1247,31 @@ const DestinationDetail = () => {
                       <CTableHeaderCell>Weekend Rate</CTableHeaderCell>
                       <CTableHeaderCell>Rating</CTableHeaderCell>
                       <CTableHeaderCell>Popularity Rank</CTableHeaderCell>
+                      <CTableHeaderCell>Data Quality</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
                   <CTableBody>
                     {dest.gates.map((gate) => (
                       <CTableRow key={gate.id}>
                         <CTableDataCell>
-                          <div className="small fw-semibold">{gate.gateName}</div>
+                          <div className="small fw-semibold">
+                            {gate.googleMapsUrl ? (
+                              <a href={gate.googleMapsUrl} target="_blank" rel="noreferrer">
+                                {gate.gateName}
+                              </a>
+                            ) : (
+                              gate.gateName
+                            )}
+                          </div>
                           {gate.isPrimary === false && (
                             <CBadge color="secondary" className="mt-1">
                               Add-on
                             </CBadge>
+                          )}
+                          {gate.notes && (
+                            <div className="text-muted mt-1" style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>
+                              {gate.notes}
+                            </div>
                           )}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
@@ -1288,10 +1305,56 @@ const DestinationDetail = () => {
                             : '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
-                          {gate.googleRating != null ? gate.googleRating.toFixed(1) : '-'}
+                          {gate.googleRating != null
+                            ? `${gate.googleRating.toFixed(1)}${gate.googleReviewCount != null ? ` (${gate.googleReviewCount})` : ''}`
+                            : '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
                           {gate.popularityRank ?? '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.dataSourceQuality || '-'}
+                        </CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              </CTabPane>
+            )}
+
+            {/* Monthly Guide */}
+            {dest.monthlyGuide?.length > 0 && (
+              <CTabPane visible={activeTab === 'monthlyGuide'}>
+                <CTable small hover responsive>
+                  <CTableHead color="light">
+                    <CTableRow>
+                      <CTableHeaderCell>Month</CTableHeaderCell>
+                      <CTableHeaderCell>Activity</CTableHeaderCell>
+                      <CTableHeaderCell>Species</CTableHeaderCell>
+                      <CTableHeaderCell>Weather</CTableHeaderCell>
+                      <CTableHeaderCell>Notes</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {dest.monthlyGuide.map((g) => (
+                      <CTableRow key={g.id}>
+                        <CTableDataCell className="small fw-semibold">{g.month}</CTableDataCell>
+                        <CTableDataCell className="small">{g.activity}</CTableDataCell>
+                        <CTableDataCell>
+                          <div className="d-flex flex-wrap gap-1">
+                            {(g.species || []).map((s) => (
+                              <CBadge key={s} color="light" textColor="dark" className="border fw-normal">
+                                {s}
+                              </CBadge>
+                            ))}
+                            {(!g.species || g.species.length === 0) && (
+                              <span className="small text-muted">-</span>
+                            )}
+                          </div>
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">{g.weather || '-'}</CTableDataCell>
+                        <CTableDataCell className="small text-muted" style={{ whiteSpace: 'pre-wrap' }}>
+                          {g.notes || '-'}
                         </CTableDataCell>
                       </CTableRow>
                     ))}

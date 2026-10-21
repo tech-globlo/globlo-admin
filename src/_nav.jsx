@@ -120,7 +120,7 @@ const _nav = [
       { component: CNavItem, name: 'Payout List', to: '/payouts', end: true },
       { component: CNavItem, name: 'Schedule', to: '/payouts/schedule' },
       { component: CNavItem, name: 'Payout Methods', to: '/payouts/methods' },
-      { component: CNavItem, name: 'Linked Accounts', to: '/payouts/linked-accounts' },
+      // { component: CNavItem, name: 'Linked Accounts', to: '/payouts/linked-accounts' },
       { component: CNavItem, name: 'IDFC Account Statement', to: '/finance/idfc-statement' },
     ],
   },

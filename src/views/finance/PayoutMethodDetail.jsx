@@ -170,6 +170,7 @@ const PayoutMethodDetail = () => {
                 <Section title="Payout Method Info">
                   <CListGroup flush>
                     <InfoRow label="Internal ID" value={method.id} mono />
+                    <InfoRow label="Gateway" value={method.gateway} />
                     <InfoRow label="Type" value={method.type} />
                     <InfoRow label="Label" value={method.label} />
                     {method.type === 'UPI' ? (
@@ -221,6 +222,10 @@ const PayoutMethodDetail = () => {
                       <InfoRow label="Name Returned by Bank" value={method.idfcBeneficiaryNameReturned} />
                       <InfoRow label="Validated At" value={fmtDateTime(method.idfcValidatedAt)} />
                       <InfoRow label="Transaction Reference" value={method.idfcValidationTransactionReference} mono />
+                      <InfoRow label="Check Attempts" value={method.idfcValidationAttemptCount} />
+                      {method.idfcValidationNextAttemptAt && (
+                        <InfoRow label="Next Check At" value={fmtDateTime(method.idfcValidationNextAttemptAt)} />
+                      )}
                     </CListGroup>
                     <CButton
                       size="sm"
@@ -279,6 +284,7 @@ const PayoutMethodDetail = () => {
                     <CTableRow>
                       <CTableHeaderCell>#</CTableHeaderCell>
                       <CTableHeaderCell>Trip</CTableHeaderCell>
+                      <CTableHeaderCell>Payment</CTableHeaderCell>
                       <CTableHeaderCell>Gross</CTableHeaderCell>
                       <CTableHeaderCell>Platform Fee</CTableHeaderCell>
                       <CTableHeaderCell>Net (Transferred)</CTableHeaderCell>
@@ -296,6 +302,20 @@ const PayoutMethodDetail = () => {
                       <CTableRow key={p.id}>
                         <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
                         <CTableDataCell className="small">{p.trip?.title || '-'}</CTableDataCell>
+                        <CTableDataCell className="small">
+                          {p.payment?.id ? (
+                            <span
+                              role="button"
+                              className="text-primary"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => navigate(`/payments/${p.payment.id}`)}
+                            >
+                              {fmt(p.payment.totalAmountMinor)}
+                            </span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </CTableDataCell>
                         <CTableDataCell className="small">{fmt(p.amount)}</CTableDataCell>
                         <CTableDataCell className="small text-muted">{fmt(p.platformFee)}</CTableDataCell>
                         <CTableDataCell className="small fw-semibold">{fmt(p.netAmount)}</CTableDataCell>

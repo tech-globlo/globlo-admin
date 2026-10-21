@@ -234,7 +234,8 @@ const PaymentDetail = () => {
   // applicable pair is shown, never both with a "-" placeholder for the one
   // that doesn't apply.
   const gstDetailRows = [
-    ['Place of Supply', payment.customerStateName ? `${payment.customerStateName} (${payment.customerStateCode})` : '-'],
+    ['Place of Supply (Customer)', payment.customerStateName ? `${payment.customerStateName} (${payment.customerStateCode})` : '-'],
+    ['Place of Supply (Globlo)', payment.legalEntityStateName ? `${payment.legalEntityStateName} (${payment.legalEntityStateCode})` : '-'],
     ['GST Rate (Trip Fee)', payment.tourOperatorTaxRate != null ? `${(payment.tourOperatorTaxRate * 100).toFixed(2)}%` : '-'],
   ]
   if (payment.tourOperatorCgstMinor != null) gstDetailRows.push(['CGST (Trip Fee)', fmt(payment.tourOperatorCgstMinor)])
@@ -366,6 +367,8 @@ const PaymentDetail = () => {
                 <InfoRow label="UPI Transaction ID"    value={payment.upiTransactionId} mono />
                 <InfoRow label="Bank Reference (RRN)"  value={payment.bankReferenceNumber} mono />
                 <InfoRow label="Idempotency Key"       value={payment.idempotencyKey} mono />
+                <InfoRow label="Invoice # (TM)"        value={payment.invoiceNumbers?.tm} mono />
+                <InfoRow label="Invoice # (System)"    value={payment.invoiceNumbers?.system} mono />
               </CListGroup>
             </Section>
 
@@ -375,6 +378,16 @@ const PaymentDetail = () => {
                 <InfoRow label="Method"        value={payment.paymentMethod} />
                 <InfoRow label="Currency"      value={payment.currency} />
                 <InfoRow label="International" value={payment.gatewayInternational ? 'Yes' : 'No'} />
+                <InfoRow label="Seats"         value={payment.numberOfSeats} />
+                <InfoRow label="Description"   value={payment.description} />
+                <InfoRow
+                  label="Terms Accepted"
+                  value={
+                    payment.termsAcceptedAt
+                      ? `${fmtDateTime(payment.termsAcceptedAt)}${payment.termsVersion ? ` (v${payment.termsVersion})` : ''}`
+                      : '-'
+                  }
+                />
               </CListGroup>
             </Section>
 

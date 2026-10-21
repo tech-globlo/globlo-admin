@@ -191,7 +191,11 @@ const CaseDetail = () => {
   if (!c) return null
 
   const statusCfg = STATUS_CONFIG[c.status] || { color: 'secondary', label: c.status }
-  const thread = c.statusLog?.filter((l) => l.note || l.solution) || []
+  // Every CaseLog row, not just ones with a note/solution — a pure status
+  // change with no note is still a real audit-trail entry and was
+  // previously dropped from the thread entirely, leaving no visible trace
+  // of who changed the status and when.
+  const thread = c.statusLog || []
 
   return (
     <>
@@ -302,7 +306,7 @@ const CaseDetail = () => {
         <CCol md={5}>
           <CCard style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 400 }}>
             <CCardHeader className="py-2 d-flex align-items-center justify-content-between">
-              <strong>Responses</strong>
+              <strong>Activity</strong>
               <CBadge color="secondary">{thread.length}</CBadge>
             </CCardHeader>
 
@@ -312,7 +316,7 @@ const CaseDetail = () => {
               style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', minHeight: 200, maxHeight: 420 }}
             >
               {thread.length === 0 && (
-                <div className="text-center text-muted small py-5">No responses yet.</div>
+                <div className="text-center text-muted small py-5">No activity yet.</div>
               )}
               {thread.map((log) => (
                 <div key={log.id} className="mb-3">
@@ -326,17 +330,19 @@ const CaseDetail = () => {
                       <CBadge color="info" style={{ fontSize: 9 }}>User visible</CBadge>
                     )}
                   </div>
-                  <div
-                    className="small rounded p-2"
-                    style={{ background: '#f4f6f8', marginLeft: 34, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}
-                  >
-                    {log.note}
-                    {log.solution && (
-                      <div className="text-success mt-1">
-                        <strong>Resolution:</strong> {log.solution}
-                      </div>
-                    )}
-                  </div>
+                  {(log.note || log.solution) && (
+                    <div
+                      className="small rounded p-2"
+                      style={{ background: '#f4f6f8', marginLeft: 34, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}
+                    >
+                      {log.note}
+                      {log.solution && (
+                        <div className="text-success mt-1">
+                          <strong>Resolution:</strong> {log.solution}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {log.fromStatus !== log.toStatus && (
                     <div className="small text-muted mt-1" style={{ marginLeft: 34, fontSize: 10 }}>
                       <CBadge color={STATUS_CONFIG[log.fromStatus]?.color || 'secondary'} style={{ fontSize: 9 }}>

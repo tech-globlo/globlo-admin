@@ -806,6 +806,7 @@ const UserDetail = () => {
                         <InfoRow label="Email" value={user.email} />
                         <InfoRow label="Phone" value={user.phone} />
                         <InfoRow label="Location" value={user.location} />
+                        <InfoRow label="Preferred Language" value={user.preferredLanguage} />
                       </CListGroup>
                     </CCol>
                     <CCol md={6}>
@@ -819,9 +820,16 @@ const UserDetail = () => {
                             </CBadge>
                           }
                         />
+                        {user.accountStatus === 'PENDING_DELETION' && user.scheduledDeletionAt && (
+                          <InfoRow
+                            label="Scheduled Deletion"
+                            value={<span className="text-danger">{fmtDateTime(user.scheduledDeletionAt)}</span>}
+                          />
+                        )}
                         <InfoRow label="Email Verified" value={user.verified ? 'Yes' : 'No'} />
                         <InfoRow label="Joined" value={fmtDateTime(user.createdAt)} />
                         <InfoRow label="Last Updated" value={fmtDateTime(user.updatedAt)} />
+                        <InfoRow label="Last Login" value={user.lastLoginAt ? fmtDateTime(user.lastLoginAt) : '—'} />
                       </CListGroup>
                     </CCol>
                   </CRow>
@@ -832,6 +840,20 @@ const UserDetail = () => {
                           label="Referral Code"
                           value={user.referralCode || '—'}
                         />
+                        <InfoRow
+                          label="Terms Accepted"
+                          value={
+                            user.termsAcceptedAt
+                              ? `${fmtDateTime(user.termsAcceptedAt)}${user.termsVersion ? ` (v${user.termsVersion})` : ''}`
+                              : '—'
+                          }
+                        />
+                        {user.mustChangePassword && (
+                          <InfoRow
+                            label="Must Change Password"
+                            value={<CBadge color="warning">Yes</CBadge>}
+                          />
+                        )}
                       </CListGroup>
                     </CCol>
                     <CCol md={6}>
@@ -853,6 +875,22 @@ const UserDetail = () => {
                             )
                           }
                         />
+                        {user.regInfo && typeof user.regInfo === 'object' && (
+                          <InfoRow
+                            label="Signup Info"
+                            value={
+                              <div className="text-end">
+                                {Object.entries(user.regInfo)
+                                  .filter(([, v]) => v != null && v !== '')
+                                  .map(([k, v]) => (
+                                    <div key={k} style={{ fontSize: 11 }}>
+                                      {k}: {String(v)}
+                                    </div>
+                                  ))}
+                              </div>
+                            }
+                          />
+                        )}
                       </CListGroup>
                     </CCol>
                   </CRow>
@@ -860,6 +898,32 @@ const UserDetail = () => {
                     <div className="mt-3 p-3 bg-body-secondary rounded small">
                       <div className="text-muted fw-semibold mb-1">Bio</div>
                       {user.bio}
+                    </div>
+                  )}
+                  {Array.isArray(user.statusHistory) && user.statusHistory.length > 0 && (
+                    <div className="mt-3">
+                      <div
+                        className="small fw-semibold text-uppercase text-muted mb-2"
+                        style={{ letterSpacing: '0.03em' }}
+                      >
+                        Status History
+                      </div>
+                      <div className="d-flex flex-column gap-2">
+                        {[...user.statusHistory].reverse().map((h, i) => (
+                          <div key={i} className="d-flex align-items-start gap-2 p-2 bg-body-secondary rounded">
+                            <CBadge color={STATUS_COLOR[h.status] || 'secondary'} className="mt-1">
+                              {h.status}
+                            </CBadge>
+                            <div className="flex-grow-1 min-w-0">
+                              {h.desc && <div className="small">{h.desc}</div>}
+                              <div className="text-muted" style={{ fontSize: 11 }}>
+                                {h.date ? fmtDateTime(h.date) : ''}
+                                {h.changedBy ? ` · by ${h.changedBy}` : ''}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </CTabPane>
