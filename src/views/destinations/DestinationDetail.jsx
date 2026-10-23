@@ -509,9 +509,9 @@ const DestinationDetail = () => {
     )
   if (isError || !dest) return <CAlert color="danger">Failed to load destination.</CAlert>
 
-  const avgRating = dest.reviews?.length
-    ? (dest.reviews.reduce((s, r) => s + r.rating, 0) / dest.reviews.length).toFixed(1)
-    : dest.rating?.toFixed(1)
+  // Use the denormalized aggregate — dest.reviews now includes soft-deleted
+  // rows (for admin moderation), so averaging it directly would be wrong.
+  const avgRating = dest.rating?.toFixed(1)
 
   const TABS = [
     { key: 'info', label: 'Info' },
@@ -520,9 +520,12 @@ const DestinationDetail = () => {
     // Only a minority of destinations have gate data sourced — hide the tab
     // entirely rather than show an always-empty one for the rest.
     ...(dest.gates?.length > 0 ? [{ key: 'gates', label: `Gates (${dest.gates.length})` }] : []),
+    ...(dest.monthlyGuide?.length > 0
+      ? [{ key: 'monthlyGuide', label: `Monthly Guide (${dest.monthlyGuide.length})` }]
+      : []),
     { key: 'gallery', label: `Gallery (${dest.photoGallery?.length ?? 0})` },
     { key: 'trips', label: `Trips (${dest._count?.trips ?? 0})` },
-    { key: 'reviews', label: `Reviews (${dest._count?.reviews ?? 0})` },
+    { key: 'reviews', label: `Reviews (${dest.reviewCount ?? 0})` },
   ]
 
   const f = (tab) => forms[tab] || {}
@@ -534,8 +537,9 @@ const DestinationDetail = () => {
       <CCard className="mb-4">
         <CCardBody>
           <CButton
-            color="link"
-            className="p-0 mb-3 text-muted small d-block"
+            color="secondary"
+            size="sm"
+            className="mb-3"
             onClick={() => navigate(-1)}
           >
             <CIcon icon={cilArrowLeft} className="me-1" size="sm" />
@@ -607,7 +611,7 @@ const DestinationDetail = () => {
           <div className="d-flex flex-wrap border-top mt-3 pt-3" style={{ gap: 0 }}>
             {[
               { label: 'Trips', value: dest._count?.trips, color: 'primary' },
-              { label: 'Reviews', value: dest._count?.reviews, color: 'warning' },
+              { label: 'Reviews', value: dest.reviewCount, color: 'warning' },
               { label: 'Gates', value: dest._count?.gates, color: 'info' },
               { label: 'Sightings', value: dest._count?.sightings, color: 'success' },
               { label: 'Wishlisted', value: dest._count?.wishlistedBy, color: 'secondary' },
@@ -1244,17 +1248,31 @@ const DestinationDetail = () => {
                       <CTableHeaderCell>Weekend Rate</CTableHeaderCell>
                       <CTableHeaderCell>Rating</CTableHeaderCell>
                       <CTableHeaderCell>Popularity Rank</CTableHeaderCell>
+                      <CTableHeaderCell>Data Quality</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
                   <CTableBody>
                     {dest.gates.map((gate) => (
                       <CTableRow key={gate.id}>
                         <CTableDataCell>
-                          <div className="small fw-semibold">{gate.gateName}</div>
+                          <div className="small fw-semibold">
+                            {gate.googleMapsUrl ? (
+                              <a href={gate.googleMapsUrl} target="_blank" rel="noreferrer">
+                                {gate.gateName}
+                              </a>
+                            ) : (
+                              gate.gateName
+                            )}
+                          </div>
                           {gate.isPrimary === false && (
                             <CBadge color="secondary" className="mt-1">
                               Add-on
                             </CBadge>
+                          )}
+                          {gate.notes && (
+                            <div className="text-muted mt-1" style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>
+                              {gate.notes}
+                            </div>
                           )}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
@@ -1288,10 +1306,56 @@ const DestinationDetail = () => {
                             : '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
-                          {gate.googleRating != null ? gate.googleRating.toFixed(1) : '-'}
+                          {gate.googleRating != null
+                            ? `${gate.googleRating.toFixed(1)}${gate.googleReviewCount != null ? ` (${gate.googleReviewCount})` : ''}`
+                            : '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
                           {gate.popularityRank ?? '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {gate.dataSourceQuality || '-'}
+                        </CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              </CTabPane>
+            )}
+
+            {/* Monthly Guide */}
+            {dest.monthlyGuide?.length > 0 && (
+              <CTabPane visible={activeTab === 'monthlyGuide'}>
+                <CTable small hover responsive>
+                  <CTableHead color="light">
+                    <CTableRow>
+                      <CTableHeaderCell>Month</CTableHeaderCell>
+                      <CTableHeaderCell>Activity</CTableHeaderCell>
+                      <CTableHeaderCell>Species</CTableHeaderCell>
+                      <CTableHeaderCell>Weather</CTableHeaderCell>
+                      <CTableHeaderCell>Notes</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {dest.monthlyGuide.map((g) => (
+                      <CTableRow key={g.id}>
+                        <CTableDataCell className="small fw-semibold">{g.month}</CTableDataCell>
+                        <CTableDataCell className="small">{g.activity}</CTableDataCell>
+                        <CTableDataCell>
+                          <div className="d-flex flex-wrap gap-1">
+                            {(g.species || []).map((s) => (
+                              <CBadge key={s} color="light" textColor="dark" className="border fw-normal">
+                                {s}
+                              </CBadge>
+                            ))}
+                            {(!g.species || g.species.length === 0) && (
+                              <span className="small text-muted">-</span>
+                            )}
+                          </div>
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">{g.weather || '-'}</CTableDataCell>
+                        <CTableDataCell className="small text-muted" style={{ whiteSpace: 'pre-wrap' }}>
+                          {g.notes || '-'}
                         </CTableDataCell>
                       </CTableRow>
                     ))}
@@ -1551,13 +1615,17 @@ const DestinationDetail = () => {
                       />
                       <span className="fs-4 fw-bold text-warning">{avgRating}</span>
                       <span className="small text-muted">
-                        average from {dest._count?.reviews} reviews
+                        average from {dest.reviewCount ?? 0} reviews
                       </span>
                     </div>
                   )}
                   <div className="d-flex flex-column gap-3">
                     {dest.reviews.map((r) => (
-                      <div key={r.id} className="p-3 bg-body-secondary rounded">
+                      <div
+                        key={r.id}
+                        className="p-3 bg-body-secondary rounded"
+                        style={{ opacity: r.isDeleted ? 0.5 : 1 }}
+                      >
                         <div className="d-flex justify-content-between align-items-center mb-1">
                           <div className="d-flex align-items-center gap-2">
                             <div
@@ -1582,6 +1650,7 @@ const DestinationDetail = () => {
                             </span>
                           </div>
                           <div className="d-flex gap-2 align-items-center">
+                            {r.isDeleted && <CBadge color="secondary">Deleted</CBadge>}
                             <CBadge color="warning" textColor="dark">
                               <CIcon icon={cilStar} size="sm" className="me-1" />
                               {r.rating} / 5

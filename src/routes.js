@@ -11,6 +11,9 @@ const VerificationDocuments = React.lazy(() => import('./views/users/Verificatio
 const SubscriberList = React.lazy(() => import('./views/users/SubscriberList'))
 const ReferralList = React.lazy(() => import('./views/users/ReferralList'))
 
+// Test Area
+const TestArea = React.lazy(() => import('./views/test/TestArea'))
+
 // Destinations
 const DestinationList = React.lazy(() => import('./views/destinations/DestinationList'))
 const DestinationDetail = React.lazy(() => import('./views/destinations/DestinationDetail'))
@@ -37,6 +40,7 @@ const RefundDetail = React.lazy(() => import('./views/finance/RefundDetail'))
 const LinkedAccounts = React.lazy(() => import('./views/finance/LinkedAccounts'))
 const LinkedAccountDetail = React.lazy(() => import('./views/finance/LinkedAccountDetail'))
 const PayoutMethods = React.lazy(() => import('./views/finance/PayoutMethods'))
+const IdfcAccountStatement = React.lazy(() => import('./views/finance/IdfcAccountStatement'))
 const PayoutMethodDetail = React.lazy(() => import('./views/finance/PayoutMethodDetail'))
 
 // Operations
@@ -88,6 +92,7 @@ export const routes = [
   },
   { path: '/subscribers', name: 'Subscribers', element: SubscriberList },
   { path: '/referrals', name: 'Referrals', element: ReferralList },
+  { path: '/test-area', name: 'Test Area', element: TestArea },
 
   // Destinations
   { path: '/destinations', name: 'Destinations', element: DestinationList },
@@ -104,6 +109,7 @@ export const routes = [
 
   // Finance - specific paths before parameterised ones
   { path: '/finance', name: 'Financial Dashboard', element: FinancialDashboard },
+  { path: '/finance/idfc-statement', name: 'IDFC Account Statement', element: IdfcAccountStatement },
   { path: '/payments/refunds/:id', name: 'Refund Detail', element: RefundDetail },
   { path: '/payments/refunds', name: 'Refunds', element: RefundList },
   { path: '/payments/coupons', name: 'Coupons', element: DiscountList },

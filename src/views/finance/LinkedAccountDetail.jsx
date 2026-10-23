@@ -71,7 +71,7 @@ const LinkedAccountDetail = () => {
   return (
     <CCard>
       <CCardHeader className="pb-0">
-        <CButton color="link" className="p-0 mb-3 text-muted small d-block" onClick={() => navigate(-1)}>
+        <CButton color="secondary" size="sm" className="mb-3" onClick={() => navigate(-1)}>
           <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
         </CButton>
 
@@ -191,6 +191,7 @@ const LinkedAccountDetail = () => {
                     <CTableRow>
                       <CTableHeaderCell>#</CTableHeaderCell>
                       <CTableHeaderCell>Trip</CTableHeaderCell>
+                      <CTableHeaderCell>Payment</CTableHeaderCell>
                       <CTableHeaderCell>Gross</CTableHeaderCell>
                       <CTableHeaderCell>Platform Fee</CTableHeaderCell>
                       <CTableHeaderCell>Net (Transferred)</CTableHeaderCell>
@@ -207,6 +208,20 @@ const LinkedAccountDetail = () => {
                       <CTableRow key={p.id}>
                         <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
                         <CTableDataCell className="small">{p.trip?.title || '-'}</CTableDataCell>
+                        <CTableDataCell className="small">
+                          {p.payment?.id ? (
+                            <span
+                              role="button"
+                              className="text-primary"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => navigate(`/payments/${p.payment.id}`)}
+                            >
+                              {fmt(p.payment.totalAmountMinor)}
+                            </span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </CTableDataCell>
                         <CTableDataCell className="small">{fmt(p.amount)}</CTableDataCell>
                         <CTableDataCell className="small text-muted">{fmt(p.platformFee)}</CTableDataCell>
                         <CTableDataCell className="small fw-semibold">{fmt(p.netAmount)}</CTableDataCell>
@@ -216,7 +231,7 @@ const LinkedAccountDetail = () => {
                           <CBadge color={PAYOUT_STATUS_COLOR[p.status] || 'secondary'}>{p.status}</CBadge>
                         </CTableDataCell>
                         <CTableDataCell className="small font-monospace text-muted" style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {p.razorpayTransferId || p.razorpayPayoutId || '-'}
+                          {p.razorpayTransferId || p.razorpayPayoutId || p.razorpayAccountId || '-'}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">{fmtDate(p.initiatedAt)}</CTableDataCell>
                         <CTableDataCell className="small text-muted">{fmtDate(p.completedAt)}</CTableDataCell>

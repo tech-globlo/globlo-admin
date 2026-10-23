@@ -54,17 +54,8 @@ const fetchCases = async ({ limit, offset, status, priority, sortBy, sortOrder }
 }
 
 const fetchCaseStats = async () => {
-  const statuses = ['OPEN', 'IN_PROGRESS', 'AWAITING_REPLY', 'RESOLVED']
-  const results = await Promise.all(
-    statuses.map((s) =>
-      api.get(`/api/admin/cases?limit=1&offset=0&status=${s}`).then((r) => ({
-        status: s,
-        count: r.data.data.total,
-      })),
-    ),
-  )
-  const all = await api.get('/api/admin/cases?limit=1&offset=0')
-  return { stats: results, total: all.data.data.total }
+  const res = await api.get('/api/admin/cases/stats')
+  return res.data.data
 }
 
 const CaseList = () => {

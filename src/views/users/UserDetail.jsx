@@ -125,6 +125,14 @@ const PAYOUT_STATUS_COLOR = {
   CANCELLED: 'dark',
 }
 
+const REFERRAL_STATUS_COLOR = {
+  PENDING: 'secondary',
+  SIGNED_UP: 'info',
+  QUALIFIED: 'success',
+  EXPIRED: 'dark',
+  CANCELLED: 'danger',
+}
+
 const INTERACTION_ICON = {
   VIEW: cilSearch,
   FAVORITE: cilBookmark,
@@ -309,7 +317,7 @@ const ActionPanel = ({ user, id, qc }) => {
         <CCardHeader className="py-2 d-flex justify-content-between align-items-center">
           <div>
             <strong className="small">Recent sign-ins</strong>
-            <span className="text-muted small ms-1">(last 20)</span>
+            <span className="text-muted small ms-1">(last 5)</span>
           </div>
           {sessionsLoading && <CSpinner size="sm" />}
         </CCardHeader>
@@ -655,6 +663,13 @@ const UserDetail = () => {
   const isTM = user.role === 'TRIP_MANAGER'
   const isPG = user.role === 'PHOTOGRAPHER'
   const hasPayouts = isTM || isSP || isPG
+  // "Trips" means something different per role — createdTrips is always 0
+  // for SP/PHOTOGRAPHER since they don't create trips themselves.
+  const tripsCount = isSP
+    ? (user._count?.tripProviderAssignmentsAsProvider ?? 0)
+    : isPG
+      ? (user._count?.bookingParticipants ?? 0)
+      : (user._count?.createdTrips ?? 0)
   const TABS = [
     'Profile',
     'Details',
@@ -663,6 +678,7 @@ const UserDetail = () => {
     ...(!isTM ? [isSP ? 'Assignments' : 'Bookings'] : []),
     'Reviews',
     ...(hasPayouts ? ['Payouts'] : []),
+    'Referrals',
     'Gallery',
   ]
 
@@ -672,8 +688,9 @@ const UserDetail = () => {
       <CCard className="mb-4">
         <CCardBody>
           <CButton
-            color="link"
-            className="p-0 mb-3 text-muted small d-block"
+            color="secondary"
+            size="sm"
+            className="mb-3"
             onClick={() => navigate(-1)}
           >
             <CIcon icon={cilArrowLeft} className="me-1" size="sm" />
@@ -729,12 +746,12 @@ const UserDetail = () => {
           </div>
 
           <div className="d-flex flex-wrap mt-3 border-top pt-3" style={{ gap: 0 }}>
-            <StatCard label="Trips" value={user._count?.createdTrips} />
+            <StatCard label="Trips" value={tripsCount} />
             {isPG && (
               <StatCard label="Payments" value={user._count?.paymentsSent} color="success" />
             )}
             <StatCard label="Bookings" value={user._count?.bookingParticipants} color="info" />
-            <StatCard label="Reviews" value={user._count?.receivedReviews} color="warning" />
+            <StatCard label="Reviews" value={reviewCount} color="warning" />
             {isSP && (
               <StatCard
                 label="Assignments"
@@ -790,6 +807,7 @@ const UserDetail = () => {
                         <InfoRow label="Email" value={user.email} />
                         <InfoRow label="Phone" value={user.phone} />
                         <InfoRow label="Location" value={user.location} />
+                        <InfoRow label="Preferred Language" value={user.preferredLanguage} />
                       </CListGroup>
                     </CCol>
                     <CCol md={6}>
@@ -803,9 +821,77 @@ const UserDetail = () => {
                             </CBadge>
                           }
                         />
+                        {user.accountStatus === 'PENDING_DELETION' && user.scheduledDeletionAt && (
+                          <InfoRow
+                            label="Scheduled Deletion"
+                            value={<span className="text-danger">{fmtDateTime(user.scheduledDeletionAt)}</span>}
+                          />
+                        )}
                         <InfoRow label="Email Verified" value={user.verified ? 'Yes' : 'No'} />
                         <InfoRow label="Joined" value={fmtDateTime(user.createdAt)} />
                         <InfoRow label="Last Updated" value={fmtDateTime(user.updatedAt)} />
+                        <InfoRow label="Last Login" value={user.lastLoginAt ? fmtDateTime(user.lastLoginAt) : '—'} />
+                      </CListGroup>
+                    </CCol>
+                  </CRow>
+                  <CRow className="mt-1">
+                    <CCol md={6}>
+                      <CListGroup flush>
+                        <InfoRow
+                          label="Referral Code"
+                          value={user.referralCode || '—'}
+                        />
+                        <InfoRow
+                          label="Terms Accepted"
+                          value={
+                            user.termsAcceptedAt
+                              ? `${fmtDateTime(user.termsAcceptedAt)}${user.termsVersion ? ` (v${user.termsVersion})` : ''}`
+                              : '—'
+                          }
+                        />
+                        {user.mustChangePassword && (
+                          <InfoRow
+                            label="Must Change Password"
+                            value={<CBadge color="warning">Yes</CBadge>}
+                          />
+                        )}
+                      </CListGroup>
+                    </CCol>
+                    <CCol md={6}>
+                      <CListGroup flush>
+                        <InfoRow
+                          label="Referred By"
+                          value={
+                            user.referredBy ? (
+                              <span
+                                role="button"
+                                className="text-primary"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => navigate(`/users/${user.referredBy.id}`)}
+                              >
+                                {user.referredBy.name}
+                              </span>
+                            ) : (
+                              '—'
+                            )
+                          }
+                        />
+                        {user.regInfo && typeof user.regInfo === 'object' && (
+                          <InfoRow
+                            label="Signup Info"
+                            value={
+                              <div className="text-end">
+                                {Object.entries(user.regInfo)
+                                  .filter(([, v]) => v != null && v !== '')
+                                  .map(([k, v]) => (
+                                    <div key={k} style={{ fontSize: 11 }}>
+                                      {k}: {String(v)}
+                                    </div>
+                                  ))}
+                              </div>
+                            }
+                          />
+                        )}
                       </CListGroup>
                     </CCol>
                   </CRow>
@@ -813,6 +899,32 @@ const UserDetail = () => {
                     <div className="mt-3 p-3 bg-body-secondary rounded small">
                       <div className="text-muted fw-semibold mb-1">Bio</div>
                       {user.bio}
+                    </div>
+                  )}
+                  {Array.isArray(user.statusHistory) && user.statusHistory.length > 0 && (
+                    <div className="mt-3">
+                      <div
+                        className="small fw-semibold text-uppercase text-muted mb-2"
+                        style={{ letterSpacing: '0.03em' }}
+                      >
+                        Status History
+                      </div>
+                      <div className="d-flex flex-column gap-2">
+                        {[...user.statusHistory].reverse().map((h, i) => (
+                          <div key={i} className="d-flex align-items-start gap-2 p-2 bg-body-secondary rounded">
+                            <CBadge color={STATUS_COLOR[h.status] || 'secondary'} className="mt-1">
+                              {h.status}
+                            </CBadge>
+                            <div className="flex-grow-1 min-w-0">
+                              {h.desc && <div className="small">{h.desc}</div>}
+                              <div className="text-muted" style={{ fontSize: 11 }}>
+                                {h.date ? fmtDateTime(h.date) : ''}
+                                {h.changedBy ? ` · by ${h.changedBy}` : ''}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </CTabPane>
@@ -1331,14 +1443,18 @@ const UserDetail = () => {
                           <span className="fs-4 fw-bold text-warning">★ {avgRating}</span>
                           <span className="text-muted small">
                             average from {reviewCount} review{reviewCount === 1 ? '' : 's'}
-                            {user.receivedReviews.length < reviewCount &&
+                            {user.receivedReviews.length < (user._count?.receivedReviews ?? 0) &&
                               ` (showing latest ${user.receivedReviews.length})`}
                           </span>
                         </div>
                       )}
                       <div className="d-flex flex-column gap-3">
                         {user.receivedReviews.map((r) => (
-                          <div key={r.id} className="p-3 bg-body-secondary rounded">
+                          <div
+                            key={r.id}
+                            className="p-3 bg-body-secondary rounded"
+                            style={{ opacity: r.isDeleted ? 0.5 : 1 }}
+                          >
                             <div className="d-flex justify-content-between align-items-center mb-1">
                               <div className="d-flex align-items-center gap-2">
                                 <div
@@ -1363,6 +1479,9 @@ const UserDetail = () => {
                                 </span>
                               </div>
                               <div className="d-flex align-items-center gap-2">
+                                {r.isVerified && <CBadge color="success">Verified</CBadge>}
+                                {r.isDeleted && <CBadge color="danger">Deleted</CBadge>}
+                                {!r.isPublic && <CBadge color="secondary">Hidden</CBadge>}
                                 <CBadge color="warning" textColor="dark">
                                   ★ {r.rating}
                                 </CBadge>
@@ -1514,6 +1633,74 @@ const UserDetail = () => {
                     </>
                   ) : (
                     <EmptyState message="No payouts found." />
+                  )}
+                </CTabPane>
+
+                {/* Referrals */}
+                <CTabPane visible={activeTab === 'referrals'}>
+                  <div className="mb-3 d-flex align-items-center gap-2">
+                    <span className="text-muted small">Referral code:</span>
+                    {user.referralCode ? (
+                      <code className="small fw-semibold">{user.referralCode}</code>
+                    ) : (
+                      <span className="small text-muted">—</span>
+                    )}
+                  </div>
+                  {user.referralsSent?.length > 0 ? (
+                    <>
+                      <div className="text-muted small mb-2">
+                        Total referrals: <strong>{user._count?.referralsSent ?? 0}</strong>
+                        {user.referralsSent.length < (user._count?.referralsSent ?? 0) &&
+                          ` (showing latest ${user.referralsSent.length})`}
+                      </div>
+                      <CTable hover responsive small>
+                        <CTableHead>
+                          <CTableRow>
+                            <CTableHeaderCell>Referee</CTableHeaderCell>
+                            <CTableHeaderCell>Channel</CTableHeaderCell>
+                            <CTableHeaderCell>Milestone</CTableHeaderCell>
+                            <CTableHeaderCell>Status</CTableHeaderCell>
+                            <CTableHeaderCell>Date</CTableHeaderCell>
+                          </CTableRow>
+                        </CTableHead>
+                        <CTableBody>
+                          {user.referralsSent.map((r) => (
+                            <CTableRow key={r.id}>
+                              <CTableDataCell className="small">
+                                {r.referee ? (
+                                  <span
+                                    role="button"
+                                    className="text-primary"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => navigate(`/users/${r.referee.id}`)}
+                                  >
+                                    {r.referee.name}
+                                  </span>
+                                ) : (
+                                  r.refereeEmail || r.refereePhone || 'Not signed up yet'
+                                )}
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {r.channel?.replace(/_/g, ' ')}
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {r.milestone?.replace(/_/g, ' ')}
+                              </CTableDataCell>
+                              <CTableDataCell>
+                                <CBadge color={REFERRAL_STATUS_COLOR[r.status] || 'secondary'}>
+                                  {r.status}
+                                </CBadge>
+                              </CTableDataCell>
+                              <CTableDataCell className="small text-muted">
+                                {fmtDate(r.createdAt)}
+                              </CTableDataCell>
+                            </CTableRow>
+                          ))}
+                        </CTableBody>
+                      </CTable>
+                    </>
+                  ) : (
+                    <EmptyState message="No referrals sent by this user." />
                   )}
                 </CTabPane>
 

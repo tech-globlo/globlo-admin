@@ -60,10 +60,14 @@ const PAYMENT_STATUS_COLOR = {
 }
 const ASSIGNMENT_STATUS_COLOR = {
   PENDING: 'warning',
-  ACCEPTED: 'success',
+  ACCEPTED: 'success', // legacy `status` field value
+  CONFIRMED: 'success', // modern `assignmentStatus` field value
   REJECTED: 'danger',
+  EXPIRED: 'secondary',
+  BACKED_OUT: 'danger',
   CANCELLED: 'secondary',
   COMPLETED: 'dark',
+  ARCHIVED: 'secondary',
 }
 const BOOKING_STATUS_COLOR = {
   PENDING: 'warning',
@@ -73,6 +77,16 @@ const BOOKING_STATUS_COLOR = {
   FAILED: 'danger',
 }
 const DIFFICULTY_COLOR = { EASY: 'success', MODERATE: 'warning', CHALLENGING: 'danger' }
+const WAITLIST_STATUS_COLOR = {
+  WAITING: 'warning',
+  OFFERED: 'info',
+  CONVERTED: 'success',
+  EXPIRED: 'secondary',
+  DECLINED: 'secondary',
+  LEFT: 'secondary',
+  REMOVED: 'secondary',
+  CLOSED: 'secondary',
+}
 
 const Pill = ({ label, value }) => (
   <div className="text-center px-3" style={{ borderRight: '1px solid var(--cui-border-color)' }}>
@@ -364,6 +378,7 @@ const TripDetail = () => {
     { key: 'overview', label: 'Overview' },
     { key: 'itinerary', label: `Itinerary (${trip.itinerary?.length ?? 0})` },
     { key: 'participants', label: `Participants (${trip._count?.participants ?? 0})` },
+    { key: 'waitlist', label: `Waitlist (${trip.waitlistEntries?.length ?? 0})` },
     { key: 'payments', label: `Payments (${trip._count?.payments ?? 0})` },
     { key: 'providers', label: `Providers (${trip._count?.providerAssignments ?? 0})` },
     { key: 'payouts', label: `Payouts (${trip.payoutSchedules?.length ?? 0})` },
@@ -410,8 +425,9 @@ const TripDetail = () => {
       <CCard>
         <CCardHeader className="pb-0">
           <CButton
-            color="link"
-            className="p-0 mb-3 text-muted small d-block"
+            color="secondary"
+            size="sm"
+            className="mb-3"
             onClick={() => navigate(-1)}
           >
             <CIcon icon={cilArrowLeft} className="me-1" size="sm" />
@@ -845,6 +861,55 @@ const TripDetail = () => {
                 </CCol>
               </CRow>
 
+              <CRow className="mt-2">
+                <CCol md={12}>
+                  <div className="small fw-semibold text-muted mb-1">Pre-Trip Pack</div>
+                  {trip.preTripPack ? (
+                    <CRow className="g-3">
+                      <CCol md={6}>
+                        <CListGroup flush>
+                          <InfoRow label="Meeting Point" value={trip.preTripPack.meetingPoint || '-'} />
+                          <InfoRow label="Reporting Time" value={trip.preTripPack.reportingTime || '-'} />
+                          <InfoRow
+                            label="Emergency Contact"
+                            value={
+                              trip.preTripPack.emergencyContactName ||
+                              trip.preTripPack.emergencyContactPhone
+                                ? `${trip.preTripPack.emergencyContactName || '-'} — ${trip.preTripPack.emergencyContactPhone || '-'}`
+                                : '-'
+                            }
+                          />
+                        </CListGroup>
+                      </CCol>
+                      <CCol md={6}>
+                        <div className="small text-muted mb-1">Kit List</div>
+                        {trip.preTripPack.kitList?.length > 0 ? (
+                          <ul className="small ps-3 mb-2">
+                            {trip.preTripPack.kitList.map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="small text-muted">-</span>
+                        )}
+                        {trip.preTripPack.notes && (
+                          <>
+                            <div className="small text-muted mb-1 mt-2">Notes</div>
+                            <div className="small" style={{ whiteSpace: 'pre-wrap' }}>
+                              {trip.preTripPack.notes}
+                            </div>
+                          </>
+                        )}
+                      </CCol>
+                    </CRow>
+                  ) : (
+                    <span className="small text-muted">
+                      This trip's organizer hasn't set up a Pre-Trip Pack yet.
+                    </span>
+                  )}
+                </CCol>
+              </CRow>
+
               {trip.destinationGates?.length > 0 && (
                 <CRow className="mt-2">
                   <CCol md={12}>
@@ -1041,6 +1106,69 @@ const TripDetail = () => {
               )}
             </CTabPane>
 
+            {/* Waitlist */}
+            <CTabPane visible={activeTab === 'waitlist'}>
+              {trip.waitlistEntries?.length > 0 ? (
+                <CTable small hover responsive>
+                  <CTableHead color="light">
+                    <CTableRow>
+                      <CTableHeaderCell>#</CTableHeaderCell>
+                      <CTableHeaderCell>Traveller</CTableHeaderCell>
+                      <CTableHeaderCell>Status</CTableHeaderCell>
+                      <CTableHeaderCell>Seats</CTableHeaderCell>
+                      <CTableHeaderCell>Offered</CTableHeaderCell>
+                      <CTableHeaderCell>Offer Expires</CTableHeaderCell>
+                      <CTableHeaderCell>Closed</CTableHeaderCell>
+                      <CTableHeaderCell>Joined Waitlist</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {trip.waitlistEntries.map((e, i) => (
+                      <CTableRow key={e.id}>
+                        <CTableDataCell className="small text-muted">{i + 1}</CTableDataCell>
+                        <CTableDataCell>
+                          <div
+                            className="small fw-semibold"
+                            style={{ color: 'var(--cui-primary)', cursor: 'pointer' }}
+                            onClick={() => e.user?.id && navigate(`/users/${e.user.id}`)}
+                          >
+                            {e.user?.name || '-'}
+                          </div>
+                          <div className="small text-muted">{e.user?.email || '-'}</div>
+                        </CTableDataCell>
+                        <CTableDataCell>
+                          <CBadge color={WAITLIST_STATUS_COLOR[e.status] || 'secondary'}>{e.status}</CBadge>
+                          {e.offeredBy && (
+                            <div className="small text-muted mt-1">Manual offer</div>
+                          )}
+                        </CTableDataCell>
+                        <CTableDataCell className="small">{e.seatsRequested}</CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {e.offeredAt ? fmtDateTime(e.offeredAt) : '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {e.offerExpiresAt ? fmtDateTime(e.offerExpiresAt) : '-'}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">
+                          {e.closedAt ? (
+                            <>
+                              {fmtDateTime(e.closedAt)}
+                              {e.closedReason && <div>{e.closedReason}</div>}
+                            </>
+                          ) : (
+                            '-'
+                          )}
+                        </CTableDataCell>
+                        <CTableDataCell className="small text-muted">{fmtDateTime(e.createdAt)}</CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              ) : (
+                <div className="text-center py-4 text-muted small">No one has joined the waitlist.</div>
+              )}
+            </CTabPane>
+
             {/* Payments */}
             <CTabPane visible={activeTab === 'payments'}>
               {trip.payments?.length > 0 ? (
@@ -1054,6 +1182,7 @@ const TripDetail = () => {
                       <CTableHeaderCell>Platform Fee</CTableHeaderCell>
                       <CTableHeaderCell>Tax (GST)</CTableHeaderCell>
                       <CTableHeaderCell>Total</CTableHeaderCell>
+                      <CTableHeaderCell>Refunded</CTableHeaderCell>
                       <CTableHeaderCell>Method</CTableHeaderCell>
                       <CTableHeaderCell>Status</CTableHeaderCell>
                       <CTableHeaderCell>Date</CTableHeaderCell>
@@ -1103,7 +1232,19 @@ const TripDetail = () => {
                           {fmtPrice(pay.totalAmountMinor)}
                         </CTableDataCell>
                         <CTableDataCell className="small">
-                          {pay.paymentMethod || '-'}
+                          {pay.refundedAmountMinor > 0 ? (
+                            <span className="text-danger">{fmtPrice(pay.refundedAmountMinor)}</span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </CTableDataCell>
+                        <CTableDataCell className="small">
+                          <div>{pay.paymentMethod || '-'}</div>
+                          {(pay.razorpayPaymentId || pay.bankReferenceNumber || pay.upiTransactionId) && (
+                            <div className="text-muted" style={{ fontSize: 11 }}>
+                              {pay.razorpayPaymentId || pay.upiTransactionId || pay.bankReferenceNumber}
+                            </div>
+                          )}
                         </CTableDataCell>
                         <CTableDataCell>
                           <CBadge color={PAYMENT_STATUS_COLOR[pay.status] || 'secondary'}>
@@ -1525,6 +1666,152 @@ const TripDetail = () => {
                   >
                     {viewProvider.notes}
                   </div>
+                </CCol>
+              )}
+
+              {/* Confirmation / lock lifecycle — only shown once the
+                  assignment has moved past PENDING, since every field here
+                  is null until then. */}
+              {(viewProvider.applicationDate ||
+                viewProvider.confirmationRequestedAt ||
+                viewProvider.confirmedAt ||
+                viewProvider.rejectedAt ||
+                viewProvider.backedOutAt ||
+                viewProvider.lockedAt) && (
+                <CCol xs={12}>
+                  <hr className="my-2" />
+                  <div
+                    className="small fw-semibold text-uppercase text-muted mb-2"
+                    style={{ letterSpacing: 1 }}
+                  >
+                    Lifecycle
+                  </div>
+                  <CListGroup flush>
+                    {viewProvider.applicationDate && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Applied</span>
+                        <span className="small">{fmtDateTime(viewProvider.applicationDate)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.applicationMessage && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Application Message</span>
+                        <span className="small text-end" style={{ maxWidth: '65%' }}>
+                          {viewProvider.applicationMessage}
+                        </span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.initiatedBy && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Initiated By</span>
+                        <span className="small">{viewProvider.initiatedBy}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.confirmationRequestedAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Confirmation Requested</span>
+                        <span className="small">{fmtDateTime(viewProvider.confirmationRequestedAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.confirmationExpiresAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Confirmation Expires</span>
+                        <span className="small">{fmtDateTime(viewProvider.confirmationExpiresAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.confirmedAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Confirmed</span>
+                        <span className="small text-success">{fmtDateTime(viewProvider.confirmedAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.rejectedAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Rejected</span>
+                        <span className="small text-danger">{fmtDateTime(viewProvider.rejectedAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.backedOutAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Backed Out</span>
+                        <span className="small text-danger">{fmtDateTime(viewProvider.backedOutAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.respondedVia && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Responded Via</span>
+                        <span className="small">{viewProvider.respondedVia}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.lockedAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Locked</span>
+                        <span className="small">{fmtDateTime(viewProvider.lockedAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.lockWindowExpiresAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Lock Window Expires</span>
+                        <span className="small">{fmtDateTime(viewProvider.lockWindowExpiresAt)}</span>
+                      </CListGroupItem>
+                    )}
+                  </CListGroup>
+                </CCol>
+              )}
+
+              {/* Override negotiation — only shown once an override has
+                  actually been proposed at least once. */}
+              {viewProvider.overrideAttemptCount > 0 && (
+                <CCol xs={12}>
+                  <hr className="my-2" />
+                  <div
+                    className="small fw-semibold text-uppercase text-muted mb-2"
+                    style={{ letterSpacing: 1 }}
+                  >
+                    Override Negotiation
+                  </div>
+                  <CListGroup flush>
+                    <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                      <span className="text-muted small">Attempts Used</span>
+                      <span className="small">{viewProvider.overrideAttemptCount}</span>
+                    </CListGroupItem>
+                    {viewProvider.originalAmountMinor != null && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Original Amount</span>
+                        <span className="small">{fmtPrice(viewProvider.originalAmountMinor)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.proposedAmountMinor != null && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Proposed Amount</span>
+                        <span className="small fw-semibold">{fmtPrice(viewProvider.proposedAmountMinor)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.overrideProposedAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Proposed At</span>
+                        <span className="small">{fmtDateTime(viewProvider.overrideProposedAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.overrideProposedBy && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Proposed By</span>
+                        <span className="small">{viewProvider.overrideProposedBy}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.overrideRespondedAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Responded At</span>
+                        <span className="small">{fmtDateTime(viewProvider.overrideRespondedAt)}</span>
+                      </CListGroupItem>
+                    )}
+                    {viewProvider.overrideExpiresAt && (
+                      <CListGroupItem className="d-flex justify-content-between py-2 px-0 border-start-0 border-end-0">
+                        <span className="text-muted small">Proposal Expires</span>
+                        <span className="small">{fmtDateTime(viewProvider.overrideExpiresAt)}</span>
+                      </CListGroupItem>
+                    )}
+                  </CListGroup>
                 </CCol>
               )}
             </CRow>

@@ -62,7 +62,7 @@ const RefundDetail = () => {
   return (
     <CCard>
       <CCardHeader>
-        <CButton color="link" className="p-0 mb-2 text-muted small d-block" onClick={() => navigate(-1)}>
+        <CButton color="secondary" size="sm" className="mb-2" onClick={() => navigate(-1)}>
           <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
         </CButton>
         <div className="d-flex align-items-center gap-3 flex-wrap">
@@ -102,6 +102,22 @@ const RefundDetail = () => {
               <CListGroup flush>
                 <InfoRow label="Reason"       value={refund.reason?.replace(/_/g, ' ')} />
                 <InfoRow label="Initiated By" value={refund.initiatedBy} />
+                {refund.initiatedByUserId && (
+                  <InfoRow
+                    label="Initiated By (Admin)"
+                    value={
+                      <span
+                        role="button"
+                        className="text-primary"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => navigate(`/users/${refund.initiatedByUserId}`)}
+                      >
+                        {refund.initiatedByUserId}
+                      </span>
+                    }
+                    mono
+                  />
+                )}
                 <InfoRow label="Journal ID"   value={refund.journalId} mono />
                 <InfoRow label="Gateway Refund ID" value={refund.externalRefundId} mono />
                 <InfoRow label="Refund Policy ID"  value={refund.refundPolicyId} mono />
@@ -130,6 +146,13 @@ const RefundDetail = () => {
                 <InfoRow label="Name"  value={refund.payment?.fromUser?.name} />
                 <InfoRow label="Email" value={refund.payment?.fromUser?.email} />
                 <InfoRow label="Phone" value={refund.payment?.fromUser?.phone} />
+              </CListGroup>
+            </Section>
+
+            <Section title="Recipient (Trip Manager)">
+              <CListGroup flush>
+                <InfoRow label="Name"  value={refund.payment?.toUser?.name} />
+                <InfoRow label="Email" value={refund.payment?.toUser?.email} />
               </CListGroup>
             </Section>
 

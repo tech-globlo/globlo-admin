@@ -27,6 +27,7 @@ import {
   cilHistory,
   cilBolt,
   cilShareAlt,
+  cilCode,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
@@ -69,7 +70,6 @@ const _nav = [
     to: '/referrals',
     icon: <CIcon icon={cilShareAlt} customClassName="nav-icon" />,
   },
-
   { component: CNavTitle, name: 'Content' },
   {
     component: CNavGroup,
@@ -120,7 +120,8 @@ const _nav = [
       { component: CNavItem, name: 'Payout List', to: '/payouts', end: true },
       { component: CNavItem, name: 'Schedule', to: '/payouts/schedule' },
       { component: CNavItem, name: 'Payout Methods', to: '/payouts/methods' },
-      { component: CNavItem, name: 'Linked Accounts', to: '/payouts/linked-accounts' },
+      // { component: CNavItem, name: 'Linked Accounts', to: '/payouts/linked-accounts' },
+      { component: CNavItem, name: 'IDFC Account Statement', to: '/finance/idfc-statement' },
     ],
   },
   {
@@ -222,6 +223,12 @@ const _nav = [
         component: CNavItem,
         name: 'Notification Templates',
         to: '/settings/notification-templates',
+      },
+      {
+        component: CNavItem,
+        name: 'Test Area',
+        to: '/test-area',
+        icon: <CIcon icon={cilCode} customClassName="nav-icon" />,
       },
     ],
   },

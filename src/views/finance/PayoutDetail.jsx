@@ -315,6 +315,19 @@ const PayoutDetail = () => {
                 <InfoRow label="Razorpay Account ID" value={p.razorpayAccountId} mono />
                 <InfoRow label="Payout ID" value={p.id} mono />
               </CListGroup>
+              {p.rawResponse && (
+                <details className="mt-3">
+                  <summary className="small text-muted" style={{ cursor: 'pointer' }}>
+                    Raw Gateway Response
+                  </summary>
+                  <pre
+                    className="small bg-body-secondary rounded p-2 mt-2 mb-0"
+                    style={{ maxHeight: 300, overflow: 'auto' }}
+                  >
+                    {JSON.stringify(p.rawResponse, null, 2)}
+                  </pre>
+                </details>
+              )}
             </CCardBody>
           </CCard>
         </CCol>
