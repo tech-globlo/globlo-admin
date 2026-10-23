@@ -688,8 +688,9 @@ const UserDetail = () => {
       <CCard className="mb-4">
         <CCardBody>
           <CButton
-            color="link"
-            className="p-0 mb-3 text-muted small d-block"
+            color="secondary"
+            size="sm"
+            className="mb-3"
             onClick={() => navigate(-1)}
           >
             <CIcon icon={cilArrowLeft} className="me-1" size="sm" />

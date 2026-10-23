@@ -8,6 +8,8 @@ import {
   CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilArrowLeft } from '@coreui/icons'
 import api from '../../lib/api'
 import { fmtDate, fmtDateTime } from '../../lib/dateUtils'
 import EntityPicker from '../../components/EntityPicker'
@@ -201,7 +203,7 @@ const SafariSessionDetail = () => {
   return (
     <>
       <CButton color="secondary" size="sm" className="mb-3" onClick={() => navigate(-1)}>
-        - Back
+        <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
       </CButton>
 
       <CRow className="g-3">

@@ -62,7 +62,7 @@ const RefundDetail = () => {
   return (
     <CCard>
       <CCardHeader>
-        <CButton color="link" className="p-0 mb-2 text-muted small d-block" onClick={() => navigate(-1)}>
+        <CButton color="secondary" size="sm" className="mb-2" onClick={() => navigate(-1)}>
           <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
         </CButton>
         <div className="d-flex align-items-center gap-3 flex-wrap">

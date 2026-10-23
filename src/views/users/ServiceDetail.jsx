@@ -100,7 +100,7 @@ const ServiceDetail = () => {
   return (
     <CCard>
       <CCardHeader className="pb-0">
-        <CButton color="link" className="p-0 mb-3 text-muted small" onClick={() => navigate(-1)}>
+        <CButton color="secondary" size="sm" className="mb-3" onClick={() => navigate(-1)}>
           <CIcon icon={cilArrowLeft} className="me-1" size="sm" />
           Back
         </CButton>
