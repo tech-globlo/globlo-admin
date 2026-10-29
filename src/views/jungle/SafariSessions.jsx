@@ -147,7 +147,6 @@ const SafariSessions = () => {
                     sortOrder={sortOrder}
                     onSort={handleSort}
                   />
-                  <CTableHeaderCell>Participants</CTableHeaderCell>
                   <CTableHeaderCell>Sightings</CTableHeaderCell>
                   <SortableHeader
                     field="startTime"
@@ -174,10 +173,7 @@ const SafariSessions = () => {
                       <CBadge color={STATUS_COLOR[s.status] || 'secondary'}>{s.status}</CBadge>
                     </CTableDataCell>
                     <CTableDataCell className="small text-center">
-                      {s.participants?.length || 0}
-                    </CTableDataCell>
-                    <CTableDataCell className="small text-center">
-                      {s._count?.sightings || 0}
+                      {s.sightingCount || 0}
                     </CTableDataCell>
                     <CTableDataCell className="small text-muted">
                       {fmtDateTime(s.startTime)}
