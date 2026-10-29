@@ -153,6 +153,52 @@ const SafariSessionDetail = () => {
   const [bulkError, setBulkError] = useState('')
   const [bulkSaving, setBulkSaving] = useState(false)
 
+  // ── End session ────────────────────────────────────────────────────────
+  const [endModal, setEndModal] = useState(false)
+  const [endStatus, setEndStatus] = useState('ENDED')
+  const [endNotes, setEndNotes] = useState('')
+  const [endError, setEndError] = useState('')
+  const [ending, setEnding] = useState(false)
+
+  const openEnd = () => {
+    setEndStatus('ENDED')
+    setEndNotes('')
+    setEndError('')
+    setEndModal(true)
+  }
+
+  const [verifyingId, setVerifyingId] = useState(null)
+
+  const handleVerify = async (sightingId) => {
+    setVerifyingId(sightingId)
+    try {
+      await api.post(`/api/admin/sightings/${sightingId}/verify`, {})
+      await qc.invalidateQueries({ queryKey: ['admin-safari-session', id] })
+    } catch {
+      // Table remains unverified on failure; admin can retry.
+    } finally {
+      setVerifyingId(null)
+    }
+  }
+
+  const handleEnd = async () => {
+    setEnding(true)
+    setEndError('')
+    try {
+      await api.post(`/api/admin/safari-sessions/${id}/end`, {
+        status: endStatus,
+        notes: endNotes.trim() || undefined,
+      })
+      await qc.invalidateQueries({ queryKey: ['admin-safari-session', id] })
+      await qc.invalidateQueries({ queryKey: ['admin-safari-sessions'] })
+      setEndModal(false)
+    } catch (err) {
+      setEndError(err?.response?.data?.message || 'Failed to end session.')
+    } finally {
+      setEnding(false)
+    }
+  }
+
   const openBulkCreate = () => {
     setBulkReporter(session?.startedByUser || null)
     setBulkRows([{ ...EMPTY_BULK_ROW }])
@@ -202,9 +248,14 @@ const SafariSessionDetail = () => {
 
   return (
     <>
-      <CButton color="secondary" size="sm" className="mb-3" onClick={() => navigate(-1)}>
-        <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
-      </CButton>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <CButton color="secondary" size="sm" onClick={() => navigate(-1)}>
+          <CIcon icon={cilArrowLeft} className="me-1" size="sm" />Back
+        </CButton>
+        {session.status === 'ACTIVE' && (
+          <CButton color="danger" size="sm" onClick={openEnd}>End Safari</CButton>
+        )}
+      </div>
 
       <CRow className="g-3">
         <CCol md={4}>
@@ -392,6 +443,15 @@ const SafariSessionDetail = () => {
                               {s.verifiedBy && s.verifiedBy !== 'SYSTEM_HEURISTIC' ? s.verifiedBy : 'System'}
                               {s.verifiedAt ? ` · ${fmtDateTime(s.verifiedAt)}` : ''}
                             </div>
+                          )}
+                          {!s.isVerified && (
+                            <CButton
+                              size="sm" color="link" className="p-0 d-block mt-1"
+                              disabled={verifyingId === s.id}
+                              onClick={() => handleVerify(s.id)}
+                            >
+                              {verifyingId === s.id ? <CSpinner size="sm" /> : 'Verify'}
+                            </CButton>
                           )}
                         </CTableDataCell>
                         <CTableDataCell className="small text-muted">
@@ -589,6 +649,48 @@ const SafariSessionDetail = () => {
             <CButton color="secondary" onClick={() => { setBulkModal(false); setBulkError('') }}>Cancel</CButton>
             <CButton color="primary" onClick={handleBulkSave} disabled={bulkSaving || !canSaveBulk}>
               {bulkSaving ? <CSpinner size="sm" /> : `Create ${bulkRows.length} Sighting${bulkRows.length > 1 ? 's' : ''}`}
+            </CButton>
+          </div>
+        </CModalFooter>
+      </CModal>
+
+      <CModal visible={endModal} onClose={() => { setEndModal(false); setEndError('') }}>
+        <CModalHeader>
+          <CModalTitle>End Safari Session</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CForm className="d-flex flex-column gap-3">
+            <div>
+              <CFormLabel className="small">Outcome</CFormLabel>
+              <div className="d-flex gap-3">
+                <div className="form-check">
+                  <input
+                    className="form-check-input" type="radio" id="endStatusEnded"
+                    checked={endStatus === 'ENDED'} onChange={() => setEndStatus('ENDED')}
+                  />
+                  <label className="form-check-label small" htmlFor="endStatusEnded">Ended normally</label>
+                </div>
+                <div className="form-check">
+                  <input
+                    className="form-check-input" type="radio" id="endStatusAbandoned"
+                    checked={endStatus === 'ABANDONED'} onChange={() => setEndStatus('ABANDONED')}
+                  />
+                  <label className="form-check-label small" htmlFor="endStatusAbandoned">Abandoned</label>
+                </div>
+              </div>
+            </div>
+            <div>
+              <CFormLabel className="small">Notes (optional)</CFormLabel>
+              <CFormInput size="sm" value={endNotes} onChange={(e) => setEndNotes(e.target.value)} placeholder="e.g. ended by support, user lost connectivity" />
+            </div>
+          </CForm>
+        </CModalBody>
+        <CModalFooter className="flex-column align-items-stretch gap-2">
+          {endError && <CAlert color="danger" className="mb-0 py-2 small">{endError}</CAlert>}
+          <div className="d-flex justify-content-end gap-2">
+            <CButton color="secondary" onClick={() => { setEndModal(false); setEndError('') }}>Cancel</CButton>
+            <CButton color="danger" onClick={handleEnd} disabled={ending}>
+              {ending ? <CSpinner size="sm" /> : 'End Session'}
             </CButton>
           </div>
         </CModalFooter>

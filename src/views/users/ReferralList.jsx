@@ -6,6 +6,7 @@ import {
   CTable, CTableBody, CTableDataCell, CTableHead, CTableHeaderCell, CTableRow,
   CBadge, CButton, CSpinner, CAlert,
   CFormInput, CFormSelect,
+  CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
 } from '@coreui/react'
 import SortableHeader from '../../components/SortableHeader'
 import AdminTableFooter from '../../components/AdminTableFooter'
@@ -52,6 +53,7 @@ const ReferralList = () => {
   const [channelFilter, setChannelFilter] = useState('')
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('desc')
+  const [detailsReferral, setDetailsReferral] = useState(null)
 
   const offset = (page - 1) * pageSize
 
@@ -156,6 +158,7 @@ const ReferralList = () => {
                   <CTableHeaderCell>Channel</CTableHeaderCell>
                   <SortableHeader field="status" label="Status" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                   <SortableHeader field="createdAt" label="Sent" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+                  <CTableHeaderCell style={{ width: 90 }}>Actions</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
@@ -194,6 +197,11 @@ const ReferralList = () => {
                       </CBadge>
                     </CTableDataCell>
                     <CTableDataCell className="small text-muted">{fmtDateTime(r.createdAt)}</CTableDataCell>
+                    <CTableDataCell>
+                      <CButton size="sm" color="secondary" variant="outline" onClick={() => setDetailsReferral(r)}>
+                        View
+                      </CButton>
+                    </CTableDataCell>
                   </CTableRow>
                 ))}
               </CTableBody>
@@ -209,6 +217,108 @@ const ReferralList = () => {
           </>
         )}
       </CCardBody>
+
+      <CModal visible={!!detailsReferral} onClose={() => setDetailsReferral(null)} alignment="center">
+        <CModalHeader>
+          <CModalTitle>Referral Details</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {detailsReferral && (
+            <table className="table table-sm table-borderless mb-0">
+              <tbody>
+                <tr>
+                  <td className="text-muted" style={{ width: 160 }}>Referrer</td>
+                  <td>
+                    {detailsReferral.referrer?.name}
+                    <div className="text-muted small">
+                      {detailsReferral.referrer?.email}
+                      {detailsReferral.referrer?.phone ? ` · ${detailsReferral.referrer.phone}` : ''}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="text-muted">Referee</td>
+                  <td>
+                    {detailsReferral.referee ? (
+                      <>
+                        {detailsReferral.referee.name}
+                        <div className="text-muted small">
+                          {detailsReferral.referee.email}
+                          {detailsReferral.referee.phone ? ` · ${detailsReferral.referee.phone}` : ''}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-muted fst-italic">Not signed up yet</span>
+                        {detailsReferral.inviteeName && <div>{detailsReferral.inviteeName}</div>}
+                        <div className="text-muted small">
+                          {[detailsReferral.refereeEmail, detailsReferral.refereePhone].filter(Boolean).join(' · ')}
+                        </div>
+                      </>
+                    )}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="text-muted">Channel</td>
+                  <td>{CHANNEL_LABEL[detailsReferral.channel] || detailsReferral.channel}</td>
+                </tr>
+                <tr>
+                  <td className="text-muted">Status</td>
+                  <td><CBadge color={STATUS_COLOR[detailsReferral.status] || 'secondary'}>{detailsReferral.status}</CBadge></td>
+                </tr>
+                <tr>
+                  <td className="text-muted">Milestone</td>
+                  <td>{detailsReferral.milestone}</td>
+                </tr>
+                {detailsReferral.destination && (
+                  <tr>
+                    <td className="text-muted">Destination</td>
+                    <td>{detailsReferral.destination.name}</td>
+                  </tr>
+                )}
+                {detailsReferral.message && (
+                  <tr>
+                    <td className="text-muted">Message</td>
+                    <td>{detailsReferral.message}</td>
+                  </tr>
+                )}
+                {detailsReferral.token && (
+                  <tr>
+                    <td className="text-muted">Invite token</td>
+                    <td className="small font-monospace">{detailsReferral.token}</td>
+                  </tr>
+                )}
+                <tr>
+                  <td className="text-muted">Notified via</td>
+                  <td>
+                    {[
+                      detailsReferral.notifiedViaEmail ? 'Email' : null,
+                      detailsReferral.notifiedViaSms ? 'SMS' : null,
+                    ].filter(Boolean).join(', ') || '—'}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="text-muted">Sent</td>
+                  <td>{fmtDateTime(detailsReferral.createdAt)}</td>
+                </tr>
+                <tr>
+                  <td className="text-muted">Last updated</td>
+                  <td>{fmtDateTime(detailsReferral.updatedAt)}</td>
+                </tr>
+                {detailsReferral.expiresAt && (
+                  <tr>
+                    <td className="text-muted">Expires</td>
+                    <td>{fmtDateTime(detailsReferral.expiresAt)}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setDetailsReferral(null)}>Close</CButton>
+        </CModalFooter>
+      </CModal>
     </CCard>
   )
 }
